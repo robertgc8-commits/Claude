@@ -39,7 +39,7 @@ struct ActiveWorkoutView: View {
                 workoutHeader(vm: vm)
 
                 if vm.exercises.isEmpty {
-                    emptyExerciseState
+                    emptyExerciseState(vm: vm)
                 } else {
                     ForEach(vm.exercises) { exercise in
                         ExerciseBlock(exercise: exercise, vm: vm)
@@ -84,6 +84,17 @@ struct ActiveWorkoutView: View {
                     }
                     Menu {
                         Button {
+                            showingTemplates = true
+                        } label: {
+                            Label("Load Template", systemImage: "doc.on.doc")
+                        }
+                        Button {
+                            vm.copyLastWorkout()
+                        } label: {
+                            Label("Copy Last Workout", systemImage: "arrow.counterclockwise")
+                        }
+                        Divider()
+                        Button {
                             saveAsTemplateName = vm.workout.title
                             showingSaveAsTemplate = true
                         } label: {
@@ -122,6 +133,12 @@ struct ActiveWorkoutView: View {
                 vm.addExercise(name: name, muscleGroup: group, templateId: templateId, initialSets: initialSets)
             }
         }
+        .sheet(isPresented: $showingTemplates) {
+            WorkoutTemplatesView(userId: appState.currentUserId) { template in
+                vm.loadTemplate(template)
+                showingTemplates = false
+            }
+        }
         .sheet(isPresented: $showingFinishSummary) {
             WorkoutSummaryView(vm: vm) {
                 appState.showingActiveWorkout = false
@@ -129,6 +146,13 @@ struct ActiveWorkoutView: View {
         }
         .sheet(isPresented: $showingNotes) {
             WorkoutNotesSheet(workout: vm.workout)
+        }
+        .alert("Save as Template", isPresented: $showingSaveAsTemplate) {
+            TextField("Template name", text: $saveAsTemplateName)
+            Button("Save") { vm.saveAsTemplate(name: saveAsTemplateName) }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This workout layout will be saved for future sessions.")
         }
         .alert("Discard workout?", isPresented: $showingDiscardAlert) {
             Button("Discard", role: .destructive) {
@@ -164,14 +188,42 @@ struct ActiveWorkoutView: View {
         .padding(16)
     }
 
-    private var emptyExerciseState: some View {
-        VStack(spacing: 12) {
+    @ViewBuilder
+    private func emptyExerciseState(vm: ActiveWorkoutViewModel) -> some View {
+        VStack(spacing: 16) {
             Image(systemName: "plus.circle.dashed")
                 .font(.system(size: 44))
                 .foregroundStyle(Color.ffBorder)
             Text("Add your first exercise")
                 .font(.system(size: 16))
                 .foregroundStyle(Color.ffSubtext)
+            HStack(spacing: 12) {
+                Button {
+                    showingTemplates = true
+                } label: {
+                    Label("From Template", systemImage: "doc.on.doc")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.ffAccent)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.ffAccent.opacity(0.1))
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+
+                Button {
+                    vm.copyLastWorkout()
+                } label: {
+                    Label("Copy Last", systemImage: "arrow.counterclockwise")
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(Color.ffSubtext)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 8)
+                        .background(Color.ffSurface)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+            }
         }
         .frame(maxWidth: .infinity)
         .padding(.vertical, 60)
@@ -201,7 +253,7 @@ private struct RestTimerBanner: View {
     let total: Int
     let onSkip: () -> Void
 
-    private var progress: Double { Double(remaining) / Double(total) }
+    private var progress: Double { Double(remaining) / Double(max(1, total)) }
     private var minutes: Int { remaining / 60 }
     private var seconds: Int { remaining % 60 }
 
@@ -248,7 +300,7 @@ private struct RestTimerBanner: View {
 
     private var timerColor: Color {
         if remaining <= 0 { return .ffGreen }
-        if Double(remaining) / Double(total) < 0.25 { return .ffRed }
+        if Double(remaining) / Double(max(1, total)) < 0.25 { return .ffRed }
         return .ffAccent
     }
 }
@@ -298,105 +350,252 @@ private struct ExerciseBlock: View {
     @Bindable var exercise: WorkoutExercise
     @ObservedObject var vm: ActiveWorkoutViewModel
     @State private var isExpanded = true
+    @State private var showingSwapPicker = false
+    @State private var showingSupersetPicker = false
 
     var sets: [ExerciseSet] { (exercise.sets ?? []).filter { !$0.isWarmup }.sorted { $0.setNumber < $1.setNumber } }
     var warmupSets: [ExerciseSet] { (exercise.sets ?? []).filter { $0.isWarmup }.sorted { $0.setNumber < $1.setNumber } }
 
+    /// Other exercises in the workout that could be linked as a superset partner
+    var supersetCandidates: [WorkoutExercise] {
+        vm.exercises.filter { $0.id != exercise.id }
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Header
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(exercise.exerciseName)
-                        .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.ffText)
-                    Text(exercise.muscleGroup.rawValue)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.ffSubtext)
-                }
-                Spacer()
-                if let summary = vm.lastSessionSummaries[exercise.exerciseName] {
-                    VStack(alignment: .trailing, spacing: 1) {
-                        Text("Last: " + summary.bestSetDisplay)
-                            .font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
-                        Text(summary.workoutDate.relativeDisplay())
-                            .font(.system(size: 11)).foregroundStyle(Color.ffSubtext.opacity(0.7))
-                    }
-                }
-                Button {
-                    withAnimation(.spring(response: 0.3)) { isExpanded.toggle() }
-                } label: {
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12)).foregroundStyle(Color.ffSubtext).padding(8)
-                }
-                Menu {
-                    Button("Add Set") { vm.addSet(to: exercise) }
-                    Button("Add Warmup Set") { vm.addWarmupSet(to: exercise) }
-                    Divider()
-                    Button("Remove Exercise", role: .destructive) { vm.removeExercise(exercise) }
-                } label: {
-                    Image(systemName: "ellipsis").font(.system(size: 16)).foregroundStyle(Color.ffSubtext).padding(8)
-                }
-            }
-            .padding(.horizontal, 14)
-            .padding(.top, 14)
-            .padding(.bottom, 8)
-
-            if let suggestion = vm.suggestions[exercise.exerciseName], isExpanded {
-                Text(suggestion.rationale)
-                    .font(.system(size: 12)).foregroundStyle(Color.ffAccent)
-                    .padding(.horizontal, 14).padding(.bottom, 8)
-            }
-
+            exerciseHeader
+            suggestionHint
             if isExpanded {
-                // Column headers
-                HStack(spacing: 12) {
-                    Text("Set").frame(width: 24)
-                    Text("Prev").frame(width: 44)
-                    Spacer()
-                    Text("Weight").frame(width: 70)
-                    Text("").frame(width: 10)
-                    Text("Reps").frame(width: 60)
-                    Text("").frame(width: 32)
-                }
-                .font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
-                .padding(.horizontal, 14).padding(.bottom, 4)
-
+                columnHeaders
                 Divider().background(Color.ffBorder).padding(.horizontal, 14)
-
-                ForEach(sets) { set in
-                    let isPR = vm.newPRs.contains { $0.setId == set.id }
-                    ExerciseSetRow(
-                        set: set,
-                        setNumber: set.setNumber,
-                        lastReps: vm.lastSessionSummaries[exercise.exerciseName]?.sets.first?.reps,
-                        lastWeight: vm.lastSessionSummaries[exercise.exerciseName]?.sets.first?.weight,
-                        isPR: isPR,
-                        onComplete: { vm.completeSet(set, exercise: exercise) },
-                        onDelete: { vm.removeSet(set, from: exercise) }
-                    )
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 4)
-                    if set.id != sets.last?.id {
-                        Divider().background(Color.ffBorder).padding(.horizontal, 14)
-                    }
-                }
-
-                Button {
-                    HapticFeedback.impact(.light)
-                    vm.addSet(to: exercise)
-                } label: {
-                    Label("Add Set", systemImage: "plus")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(Color.ffAccent)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 10)
-                }
-                .buttonStyle(.plain)
-                .padding(.horizontal, 14)
+                setsContent
+                addSetButton
             }
         }
         .background(Color.ffSurface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        // Superset left-border accent
+        .overlay(alignment: .leading) {
+            if exercise.supersetGroupId != nil {
+                RoundedRectangle(cornerRadius: 3)
+                    .fill(Color.ffPurple)
+                    .frame(width: 4)
+                    .padding(.vertical, 8)
+                    .padding(.leading, 0)
+            }
+        }
+        .sheet(isPresented: $showingSwapPicker) {
+            ExercisePickerView { name, group, templateId, _ in
+                vm.swapExercise(exercise, newName: name, newMuscleGroup: group, newTemplateId: templateId)
+                showingSwapPicker = false
+            }
+        }
+        .sheet(isPresented: $showingSupersetPicker) {
+            SupersetPickerSheet(
+                candidates: supersetCandidates,
+                onSelect: { partner in
+                    vm.linkSuperset(exercise, with: partner)
+                    showingSupersetPicker = false
+                }
+            )
+        }
+    }
+
+    // MARK: Header
+
+    private var exerciseHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(exercise.exerciseName)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundStyle(Color.ffText)
+                    if exercise.supersetGroupId != nil {
+                        Text("SS")
+                            .font(.system(size: 9, weight: .black))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 2)
+                            .background(Color.ffPurple)
+                            .clipShape(Capsule())
+                    }
+                }
+                Text(exercise.muscleGroup.rawValue)
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.ffSubtext)
+            }
+            Spacer()
+            if let summary = vm.lastSessionSummaries[exercise.exerciseName] {
+                VStack(alignment: .trailing, spacing: 1) {
+                    Text("Last: " + summary.bestSetDisplay)
+                        .font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
+                    Text(summary.workoutDate.relativeDisplay())
+                        .font(.system(size: 11)).foregroundStyle(Color.ffSubtext.opacity(0.7))
+                }
+            }
+            Button {
+                withAnimation(.spring(response: 0.3)) { isExpanded.toggle() }
+            } label: {
+                Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    .font(.system(size: 12)).foregroundStyle(Color.ffSubtext).padding(8)
+            }
+            Menu {
+                Button("Add Set") { vm.addSet(to: exercise) }
+                Button("Add Warmup Set") { vm.addWarmupSet(to: exercise) }
+                Divider()
+                Button("Swap Exercise") { showingSwapPicker = true }
+                if exercise.supersetGroupId == nil {
+                    Button("Link as Superset") { showingSupersetPicker = true }
+                } else {
+                    Button("Unlink Superset") { vm.unlinkSuperset(exercise) }
+                }
+                Divider()
+                Button("Remove Exercise", role: .destructive) { vm.removeExercise(exercise) }
+            } label: {
+                Image(systemName: "ellipsis").font(.system(size: 16)).foregroundStyle(Color.ffSubtext).padding(8)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.top, 14)
+        .padding(.bottom, 8)
+    }
+
+    @ViewBuilder
+    private var suggestionHint: some View {
+        if let suggestion = vm.suggestions[exercise.exerciseName], isExpanded {
+            Text(suggestion.rationale)
+                .font(.system(size: 12)).foregroundStyle(Color.ffAccent)
+                .padding(.horizontal, 14).padding(.bottom, 8)
+        }
+    }
+
+    private var columnHeaders: some View {
+        HStack(spacing: 12) {
+            Text("Set").frame(width: 24)
+            Text("Prev").frame(width: 44)
+            Spacer()
+            Text("Weight").frame(width: 70)
+            Text("").frame(width: 10)
+            Text("Reps").frame(width: 60)
+            Text("").frame(width: 32)
+        }
+        .font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
+        .padding(.horizontal, 14).padding(.bottom, 4)
+    }
+
+    private var setsContent: some View {
+        ForEach(sets) { set in
+            let isPR = vm.newPRs.contains { $0.setId == set.id }
+            VStack(spacing: 0) {
+                ExerciseSetRow(
+                    set: set,
+                    setNumber: set.setNumber,
+                    lastReps: vm.lastSessionSummaries[exercise.exerciseName]?.sets.first?.reps,
+                    lastWeight: vm.lastSessionSummaries[exercise.exerciseName]?.sets.first?.weight,
+                    isPR: isPR,
+                    onComplete: { vm.completeSet(set, exercise: exercise) },
+                    onDelete: { vm.removeSet(set, from: exercise) }
+                )
+                .padding(.horizontal, 14)
+                .padding(.vertical, 4)
+
+                // "Add Drop Set" inline button after each completed non-drop set
+                if set.isCompleted && !set.isDropSet {
+                    Button {
+                        HapticFeedback.impact(.light)
+                        vm.addDropSet(after: set, to: exercise)
+                    } label: {
+                        HStack(spacing: 4) {
+                            Image(systemName: "arrow.down.circle")
+                                .font(.system(size: 11))
+                            Text("Drop Set")
+                                .font(.system(size: 11, weight: .medium))
+                        }
+                        .foregroundStyle(Color.ffOrange)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 4)
+                        .background(Color.ffOrange.opacity(0.1))
+                        .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .padding(.horizontal, 14)
+                    .padding(.bottom, 4)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+                }
+
+                if set.id != sets.last?.id {
+                    Divider().background(Color.ffBorder).padding(.horizontal, 14)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: set.isCompleted)
+        }
+    }
+
+    private var addSetButton: some View {
+        Button {
+            HapticFeedback.impact(.light)
+            vm.addSet(to: exercise)
+        } label: {
+            Label("Add Set", systemImage: "plus")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(Color.ffAccent)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 10)
+        }
+        .buttonStyle(.plain)
+        .padding(.horizontal, 14)
+    }
+}
+
+// MARK: - Superset Picker Sheet
+
+private struct SupersetPickerSheet: View {
+    let candidates: [WorkoutExercise]
+    let onSelect: (WorkoutExercise) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.ffBackground.ignoresSafeArea()
+                if candidates.isEmpty {
+                    Text("Add another exercise first")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.ffSubtext)
+                } else {
+                    List(candidates) { exercise in
+                        Button {
+                            onSelect(exercise)
+                        } label: {
+                            HStack {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(exercise.exerciseName)
+                                        .font(.system(size: 15, weight: .semibold))
+                                        .foregroundStyle(Color.ffText)
+                                    Text(exercise.muscleGroup.rawValue)
+                                        .font(.system(size: 12))
+                                        .foregroundStyle(Color.ffSubtext)
+                                }
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(Color.ffSubtext)
+                            }
+                        }
+                        .listRowBackground(Color.ffSurface)
+                    }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
+                }
+            }
+            .navigationTitle("Link as Superset")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Cancel") { dismiss() }.foregroundStyle(Color.ffSubtext)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
     }
 }

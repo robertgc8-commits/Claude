@@ -60,6 +60,9 @@ final class WorkoutExercise {
     var muscleGroup: MuscleGroup
     var order: Int
     var notes: String?
+    /// Non-nil when this exercise is paired with one or more others in a superset.
+    /// All exercises sharing the same value are displayed as a grouped superset.
+    var supersetGroupId: String?
 
     @Relationship(deleteRule: .cascade) var sets: [ExerciseSet]?
 
@@ -77,6 +80,7 @@ final class WorkoutExercise {
         self.exerciseTemplateId = exerciseTemplateId
         self.muscleGroup = muscleGroup
         self.order = order
+        self.supersetGroupId = nil
     }
 
     var completedSets: [ExerciseSet] {

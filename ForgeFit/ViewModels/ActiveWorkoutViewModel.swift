@@ -266,9 +266,9 @@ final class ActiveWorkoutViewModel: ObservableObject {
         try? context.save()
     }
 
-    /// Copies the most recently completed workout for this user into the current session,
+    /// Copies the most recently completed workout into the current session,
     /// pre-filling each exercise with the actual weights and reps from that last session.
-    func copyLastWorkout(workoutRepo: WorkoutRepository) {
+    func copyLastWorkout() {
         guard let lastWorkout = (try? workoutRepo.fetchCompletedWorkouts(userId: userId))?.first else { return }
         let sortedExercises = (lastWorkout.exercises ?? []).sorted { $0.order < $1.order }
         for workoutExercise in sortedExercises {
@@ -287,6 +287,30 @@ final class ActiveWorkoutViewModel: ObservableObject {
         }
     }
 
+    // MARK: - Drop Set
+
+    /// Inserts a new drop-set immediately after `completedSet`, pre-filled at 80 % of its weight
+    /// (rounded down to the nearest 2.5 kg). All subsequent set numbers are shifted up by one.
+    func addDropSet(after completedSet: ExerciseSet, to exercise: WorkoutExercise) {
+        let allSets = (exercise.sets ?? []).filter { !$0.isWarmup }.sorted { $0.setNumber < $1.setNumber }
+        for s in allSets where s.setNumber > completedSet.setNumber {
+            s.setNumber += 1
+        }
+        let reducedWeight = (completedSet.weight * 0.8 / 2.5).rounded(.down) * 2.5
+        let newSet = ExerciseSet(
+            workoutExerciseId: exercise.id,
+            setNumber: completedSet.setNumber + 1,
+            reps: completedSet.reps,
+            weight: max(0, reducedWeight)
+        )
+        newSet.isDropSet = true
+        if exercise.sets == nil { exercise.sets = [] }
+        exercise.sets?.append(newSet)
+        context.insert(newSet)
+        try? context.save()
+        objectWillChange.send()
+    }
+
     // MARK: - Swap Exercise
 
     func swapExercise(_ exercise: WorkoutExercise, newName: String, newMuscleGroup: MuscleGroup, newTemplateId: String?) {
@@ -295,8 +319,40 @@ final class ActiveWorkoutViewModel: ObservableObject {
         exercise.exerciseTemplateId = newTemplateId
         try? context.save()
         objectWillChange.send()
-        // Refresh last-session data for the new exercise name
         loadSuggestion(for: exercise)
+    }
+
+    // MARK: - Supersets
+
+    /// Links two exercises as a superset. If either is already in a group the other joins it;
+    /// otherwise a new shared group ID is assigned.
+    func linkSuperset(_ a: WorkoutExercise, with b: WorkoutExercise) {
+        let groupId = a.supersetGroupId ?? b.supersetGroupId ?? UUID().uuidString
+        a.supersetGroupId = groupId
+        b.supersetGroupId = groupId
+        try? context.save()
+        objectWillChange.send()
+    }
+
+    /// Removes `exercise` from its superset group. If only one other exercise remains in the
+    /// group, that exercise is also unlinked (a superset needs at least two exercises).
+    func unlinkSuperset(_ exercise: WorkoutExercise) {
+        guard let groupId = exercise.supersetGroupId else { return }
+        exercise.supersetGroupId = nil
+        let remaining = exercises.filter { $0.supersetGroupId == groupId }
+        if remaining.count == 1 { remaining.first?.supersetGroupId = nil }
+        try? context.save()
+        objectWillChange.send()
+    }
+
+    // MARK: - Save as Template
+
+    /// Snapshots the current workout into a new reusable template.
+    func saveAsTemplate(name: String) {
+        guard !name.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        let templateRepo = WorkoutTemplateRepository(context: context)
+        let _ = templateRepo.createTemplate(from: workout, userId: userId, name: name)
+        try? templateRepo.save()
     }
 
     // MARK: - Finish / Discard
