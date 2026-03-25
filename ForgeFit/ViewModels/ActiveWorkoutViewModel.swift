@@ -36,8 +36,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
     // MARK: - Timer
 
     private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in
+        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            Task { @MainActor [weak self] in
                 self?.elapsedSeconds += 1
             }
         }
@@ -212,7 +212,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
     }
 
     private func evaluateAchievements() async {
-        guard let allWorkoutsRefreshed = try? workoutRepo.fetchCompletedWorkouts(userId: userId) else { return }
+        guard (try? workoutRepo.fetchCompletedWorkouts(userId: userId)) != nil else { return }
         // Achievement evaluation is done in WorkoutCompletionViewModel after dismissal
     }
 }

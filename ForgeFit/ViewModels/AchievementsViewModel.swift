@@ -18,8 +18,9 @@ final class AchievementsViewModel: ObservableObject {
     func load() {
         isLoading = true
         defer { isLoading = false }
+        let uid = userId
         let descriptor = FetchDescriptor<AchievementUnlock>(
-            predicate: #Predicate { $0.userId == self.userId },
+            predicate: #Predicate { $0.userId == uid },
             sortBy: [SortDescriptor(\.unlockedAt, order: .reverse)]
         )
         unlocked = (try? context.fetch(descriptor)) ?? []

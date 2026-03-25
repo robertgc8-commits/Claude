@@ -65,7 +65,7 @@ struct PreviewContainer<Content: View>: View {
     let container: ModelContainer
     let appState: AppState
 
-    init(@ViewBuilder content: () -> Content) {
+    @MainActor init(@ViewBuilder content: () -> Content) {
         self.container = PreviewHelpers.makeContainer()
         self.appState = AppState()
         self.appState.currentUserId = "preview_user"
