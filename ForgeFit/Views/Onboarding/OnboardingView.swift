@@ -1,15 +1,9 @@
 import SwiftUI
-import SwiftData
 
 struct OnboardingView: View {
     @EnvironmentObject var appState: AppState
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var vm: OnboardingViewModel
-
-    init() {
-        // Placeholder — real init uses environment modelContext in body
-        _vm = StateObject(wrappedValue: OnboardingViewModel(context: OnboardingViewModel.placeholderContext))
-    }
+    @StateObject private var vm = OnboardingViewModel()
 
     var body: some View {
         ZStack {
@@ -20,10 +14,17 @@ struct OnboardingView: View {
             case .createAccount: CreateAccountStep(vm: vm)
             case .setGoal:       SetGoalStep(vm: vm)
             case .permissions:   PermissionsStep(vm: vm)
-            case .done:          OnboardingDoneStep { appState.completeOnboarding() }
+            case .done:
+                OnboardingDoneStep {
+                    appState.signIn(userId: vm.savedUserId)
+                    appState.completeOnboarding()
+                }
             }
         }
         .preferredColorScheme(.dark)
+        .onAppear {
+            vm.configure(context: modelContext)
+        }
     }
 }
 
@@ -371,10 +372,3 @@ private struct OnboardingHeader: View {
     }
 }
 
-extension OnboardingViewModel {
-    static var placeholderContext: ModelContext {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(for: User.self, configurations: config)
-        return ModelContext(container)
-    }
-}

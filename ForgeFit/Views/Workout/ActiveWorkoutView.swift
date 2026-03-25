@@ -178,6 +178,7 @@ struct ActiveWorkoutView: View {
     }
 
     private func setupViewModel() {
+        guard vm == nil else { return }
         let repo = WorkoutRepository(context: modelContext)
         let workout = repo.createWorkout(userId: appState.currentUserId, title: defaultWorkoutTitle())
         try? modelContext.save()

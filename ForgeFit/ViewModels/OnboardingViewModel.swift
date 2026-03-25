@@ -17,14 +17,21 @@ final class OnboardingViewModel: ObservableObject {
     @Published var startingWeightInput: String = ""
     @Published var targetWeightInput: String = ""
 
-    private let authService: AuthServiceProtocol
-    private let userRepo: UserRepository
-    private let notificationService = NotificationService.shared
-    private var savedUserId: String = ""
+    // Exposed so the view can call appState.signIn(userId:) at the done step
+    private(set) var savedUserId: String = ""
 
-    init(context: ModelContext, authService: AuthServiceProtocol = MockAuthService()) {
+    private let authService: AuthServiceProtocol
+    private let notificationService = NotificationService.shared
+    private var userRepo: UserRepository?
+
+    init(authService: AuthServiceProtocol = MockAuthService()) {
         self.authService = authService
-        self.userRepo = UserRepository(context: context)
+    }
+
+    /// Called from onAppear once the SwiftUI environment modelContext is available.
+    func configure(context: ModelContext) {
+        guard userRepo == nil else { return }
+        userRepo = UserRepository(context: context)
     }
 
     enum OnboardingStep: Int, CaseIterable {
@@ -60,6 +67,10 @@ final class OnboardingViewModel: ObservableObject {
             errorMessage = "Please fill in all fields."
             return
         }
+        guard let userRepo else {
+            errorMessage = "Internal error: store not ready."
+            return
+        }
         isCreatingAccount = true
         errorMessage = nil
         Task {
@@ -89,7 +100,8 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     func saveGoal() {
-        guard let settings = try? userRepo.fetchSettings(userId: savedUserId) else {
+        guard let userRepo,
+              let settings = try? userRepo.fetchSettings(userId: savedUserId) else {
             advance()
             return
         }
@@ -103,7 +115,7 @@ final class OnboardingViewModel: ObservableObject {
         if let kg = Double(targetWeightInput), kg > 0 {
             settings.targetWeightKg = kg
         }
-        try? userRepo.save()
+        try? userRepo?.save()
         advance()
     }
 
