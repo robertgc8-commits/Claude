@@ -1,6 +1,22 @@
 import Foundation
 import SwiftData
 
+struct AllTimeStats {
+    var totalWorkouts: Int = 0
+    var totalSets: Int = 0
+    var totalVolume: Double = 0
+    var totalMinutes: Int = 0
+    var uniqueExercises: Int = 0
+    var prCount: Int = 0
+
+    var timeDisplay: String {
+        if totalMinutes < 60 { return "\(totalMinutes)m" }
+        let h = totalMinutes / 60
+        let m = totalMinutes % 60
+        return m == 0 ? "\(h)h" : "\(h)h \(m)m"
+    }
+}
+
 @MainActor
 final class ProgressViewModel: ObservableObject {
     @Published var personalRecords: [PersonalRecord] = []
@@ -19,8 +35,17 @@ final class ProgressViewModel: ObservableObject {
     // Muscle group frequency
     @Published var muscleGroupFrequency: [(group: MuscleGroup, count: Int)] = []
 
-    // FEATURE 1: Strength Curve
+    // Strength Curve (1RM over time, deduplicated by day)
     @Published var strengthCurve: [(date: Date, estimated1RM: Double)] = []
+
+    // Relative strength: 1RM / bodyweight ratio over time
+    @Published var relativeStrengthData: [(date: Date, ratio: Double)] = []
+
+    // All-time aggregate stats
+    @Published var allTimeStats = AllTimeStats()
+
+    // Calendar heatmap: startOfDay → workout count
+    @Published var calendarWorkouts: [Date: Int] = [:]
 
     // FEATURE 4: Body Measurements
     @Published var measurements: [MeasurementType: [BodyMeasurementEntry]] = [:]
@@ -56,6 +81,8 @@ final class ProgressViewModel: ObservableObject {
             }
 
             buildMuscleGroupFrequency(from: workouts)
+            buildAllTimeStats(from: workouts)
+            buildCalendarWorkouts(from: workouts)
             loadBodyWeight()
             loadMeasurements()
         } catch {
@@ -81,39 +108,89 @@ final class ProgressViewModel: ObservableObject {
             .flatMap { $0.completedSets }
             .sorted { $0.loggedAt < $1.loggedAt }
 
-        // FEATURE 1: Build strength curve for this exercise
         buildStrengthCurve(exerciseName: name, workouts: workouts)
+        buildRelativeStrength()
     }
 
-    // MARK: - Feature 1: Strength Curve
+    // MARK: - Strength Curve
+
+    /// Brzycki 1RM estimate, capped at reps ≤ 12 for reliability.
+    static func brzycki1RM(weight: Double, reps: Int) -> Double? {
+        guard reps >= 1, reps <= 12, weight > 0 else { return nil }
+        return reps == 1 ? weight : weight / (1.0278 - 0.0278 * Double(reps))
+    }
 
     private func buildStrengthCurve(exerciseName: String, workouts: [Workout]) {
-        var curve: [(date: Date, estimated1RM: Double)] = []
+        let cal = Calendar.current
+        var dayBest: [Date: Double] = [:]
 
         for workout in workouts {
             guard let completedAt = workout.completedAt else { continue }
+            let day = cal.startOfDay(for: completedAt)
             let relevantExercises = (workout.exercises ?? []).filter { $0.exerciseName == exerciseName }
-            var best1RM: Double = 0
 
             for exercise in relevantExercises {
                 for set in exercise.completedSets {
-                    guard set.reps > 0, set.reps < 37, set.weight > 0 else { continue }
-                    let estimated: Double
-                    if set.reps == 1 {
-                        estimated = set.weight
-                    } else {
-                        estimated = set.weight / (1.0278 - 0.0278 * Double(set.reps))
-                    }
-                    if estimated > best1RM { best1RM = estimated }
+                    guard let e1rm = Self.brzycki1RM(weight: set.weight, reps: set.reps) else { continue }
+                    if e1rm > (dayBest[day] ?? 0) { dayBest[day] = e1rm }
                 }
-            }
-
-            if best1RM > 0 {
-                curve.append((date: completedAt, estimated1RM: best1RM))
             }
         }
 
-        strengthCurve = curve.sorted { $0.date < $1.date }
+        strengthCurve = dayBest
+            .map { (date: $0.key, estimated1RM: $0.value) }
+            .sorted { $0.date < $1.date }
+    }
+
+    // MARK: - Relative Strength
+
+    private func buildRelativeStrength() {
+        guard !bodyWeightEntries.isEmpty, !strengthCurve.isEmpty else {
+            relativeStrengthData = []
+            return
+        }
+        let bwSorted = bodyWeightEntries.sorted { $0.loggedAt < $1.loggedAt }
+        let thirtyDays: TimeInterval = 30 * 24 * 3600
+        relativeStrengthData = strengthCurve.compactMap { point in
+            guard let closest = bwSorted.min(by: {
+                abs($0.loggedAt.timeIntervalSince(point.date)) < abs($1.loggedAt.timeIntervalSince(point.date))
+            }), closest.weightKg > 0,
+                  abs(closest.loggedAt.timeIntervalSince(point.date)) <= thirtyDays
+            else { return nil }
+            return (date: point.date, ratio: point.estimated1RM / closest.weightKg)
+        }
+    }
+
+    // MARK: - All-Time Stats
+
+    private func buildAllTimeStats(from workouts: [Workout]) {
+        var stats = AllTimeStats()
+        stats.totalWorkouts = workouts.count
+        var names = Set<String>()
+        for workout in workouts {
+            stats.totalMinutes += (workout.durationSeconds ?? 0) / 60
+            for exercise in workout.exercises ?? [] {
+                names.insert(exercise.exerciseName)
+                let completed = exercise.completedSets
+                stats.totalSets += completed.count
+                stats.totalVolume += completed.reduce(0) { $0 + $1.weight * Double($1.reps) }
+            }
+        }
+        stats.uniqueExercises = names.count
+        stats.prCount = personalRecords.count
+        allTimeStats = stats
+    }
+
+    // MARK: - Calendar Heatmap
+
+    private func buildCalendarWorkouts(from workouts: [Workout]) {
+        let cal = Calendar.current
+        var dict: [Date: Int] = [:]
+        for workout in workouts {
+            let day = cal.startOfDay(for: workout.completedAt ?? workout.startedAt)
+            dict[day, default: 0] += 1
+        }
+        calendarWorkouts = dict
     }
 
     var prsByExercise: [String: [PersonalRecord]] {
@@ -150,6 +227,7 @@ final class ProgressViewModel: ObservableObject {
             sortBy: [SortDescriptor(\.loggedAt, order: .reverse)]
         )
         bodyWeightEntries = (try? ctx.fetch(descriptor)) ?? []
+        buildRelativeStrength()
     }
 
     func logBodyWeight() {
