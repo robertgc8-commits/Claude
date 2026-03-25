@@ -97,9 +97,9 @@
 	11A247F97746A95D9B5AEE73 /* AchievementEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngine.swift; sourceTree = "<group>"; };
 	95A12E7A5D0A0F44BDDF7F48 /* ProgressOverloadEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressOverloadEngine.swift; sourceTree = "<group>"; };
 	368C7EC682ED3E40E9F2CC4F /* StreakEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakEngine.swift; sourceTree = "<group>"; };
-	84DC4E67F8F3DC14DEED93DF /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Color+Theme.swift; sourceTree = "<group>"; };
-	BA00EC6CED86ABC35A7E190D /* Date+Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Date+Workout.swift; sourceTree = "<group>"; };
-	CBFCE48428B5CBBFB69CDF75 /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = View+Extensions.swift; sourceTree = "<group>"; };
+	84DC4E67F8F3DC14DEED93DF /* Color+Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Color+Theme.swift"; sourceTree = "<group>"; };
+	BA00EC6CED86ABC35A7E190D /* Date+Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Date+Workout.swift"; sourceTree = "<group>"; };
+	CBFCE48428B5CBBFB69CDF75 /* View+Extensions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "View+Extensions.swift"; sourceTree = "<group>"; };
 	CC8F3BE19DCC9E23BD59873F /* MockData.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockData.swift; sourceTree = "<group>"; };
 	E8C3A190471051DCC3318FEE /* PreviewHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewHelpers.swift; sourceTree = "<group>"; };
 	755DB46AED7AEB5E0CCC0E21 /* Achievement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Achievement.swift; sourceTree = "<group>"; };
