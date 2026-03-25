@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 struct OnboardingView: View {
     @EnvironmentObject var appState: AppState
