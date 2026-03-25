@@ -241,6 +241,64 @@ final class ActiveWorkoutViewModel: ObservableObject {
         settings = try? UserRepository(context: context).fetchSettings(userId: userId)
     }
 
+    // MARK: - Templates
+
+    /// Pre-fills the current workout from a saved template.
+    /// Each template exercise is added in order with its default sets pre-loaded.
+    /// The template's usage stats are updated afterwards.
+    func loadTemplate(_ template: WorkoutTemplate) {
+        let sorted = (template.exercises ?? []).sorted { $0.order < $1.order }
+        for templateExercise in sorted {
+            let initialSets: [(reps: Int, weight: Double)] = Array(
+                repeating: (reps: templateExercise.defaultReps,
+                            weight: templateExercise.defaultWeight),
+                count: max(1, templateExercise.defaultSets)
+            )
+            addExercise(
+                name: templateExercise.exerciseName,
+                muscleGroup: templateExercise.muscleGroup,
+                templateId: templateExercise.exerciseTemplateId,
+                initialSets: initialSets
+            )
+        }
+        template.lastUsedAt = Date()
+        template.useCount += 1
+        try? context.save()
+    }
+
+    /// Copies the most recently completed workout for this user into the current session,
+    /// pre-filling each exercise with the actual weights and reps from that last session.
+    func copyLastWorkout(workoutRepo: WorkoutRepository) {
+        guard let lastWorkout = (try? workoutRepo.fetchCompletedWorkouts(userId: userId))?.first else { return }
+        let sortedExercises = (lastWorkout.exercises ?? []).sorted { $0.order < $1.order }
+        for workoutExercise in sortedExercises {
+            let workingSets = (workoutExercise.sets ?? [])
+                .filter { !$0.isWarmup }
+                .sorted { $0.setNumber < $1.setNumber }
+            let initialSets: [(reps: Int, weight: Double)] = workingSets.isEmpty
+                ? [(reps: 8, weight: 0)]
+                : workingSets.map { (reps: $0.reps, weight: $0.weight) }
+            addExercise(
+                name: workoutExercise.exerciseName,
+                muscleGroup: workoutExercise.muscleGroup,
+                templateId: workoutExercise.exerciseTemplateId,
+                initialSets: initialSets
+            )
+        }
+    }
+
+    // MARK: - Swap Exercise
+
+    func swapExercise(_ exercise: WorkoutExercise, newName: String, newMuscleGroup: MuscleGroup, newTemplateId: String?) {
+        exercise.exerciseName = newName
+        exercise.muscleGroup = newMuscleGroup
+        exercise.exerciseTemplateId = newTemplateId
+        try? context.save()
+        objectWillChange.send()
+        // Refresh last-session data for the new exercise name
+        loadSuggestion(for: exercise)
+    }
+
     // MARK: - Finish / Discard
 
     func finishWorkout() {

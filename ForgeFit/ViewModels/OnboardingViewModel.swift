@@ -12,10 +12,15 @@ final class OnboardingViewModel: ObservableObject {
     @Published var weightUnit: WeightUnit = .kg
     @Published var isCreatingAccount: Bool = false
     @Published var errorMessage: String?
+    @Published var fitnessGoal: FitnessGoal = .buildMuscle
+    @Published var experienceLevel: ExperienceLevel = .intermediate
+    @Published var startingWeightInput: String = ""
+    @Published var targetWeightInput: String = ""
 
     private let authService: AuthServiceProtocol
     private let userRepo: UserRepository
     private let notificationService = NotificationService.shared
+    private var savedUserId: String = ""
 
     init(context: ModelContext, authService: AuthServiceProtocol = MockAuthService()) {
         self.authService = authService
@@ -70,6 +75,7 @@ final class OnboardingViewModel: ObservableObject {
                 )
                 try userRepo.save()
                 await MainActor.run {
+                    self.savedUserId = result.userId
                     isCreatingAccount = false
                     advance()
                 }
@@ -83,7 +89,21 @@ final class OnboardingViewModel: ObservableObject {
     }
 
     func saveGoal() {
-        // Update settings
+        guard let settings = try? userRepo.fetchSettings(userId: savedUserId) else {
+            advance()
+            return
+        }
+        settings.weeklyWorkoutTarget = weeklyTarget
+        settings.preferredWeightUnit = weightUnit
+        settings.fitnessGoal = fitnessGoal
+        settings.experienceLevel = experienceLevel
+        if let kg = Double(startingWeightInput), kg > 0 {
+            settings.startingWeightKg = kg
+        }
+        if let kg = Double(targetWeightInput), kg > 0 {
+            settings.targetWeightKg = kg
+        }
+        try? userRepo.save()
         advance()
     }
 

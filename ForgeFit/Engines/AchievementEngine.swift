@@ -16,6 +16,7 @@ final class AchievementEngine {
         let workoutsPerMuscleGroup: [MuscleGroup: Int]
         let alreadyUnlocked: Set<String>  // achievement IDs
         let triggeringWorkout: Workout?
+        let recentWorkouts: [Workout]
     }
 
     /// Returns list of newly unlocked achievements.
@@ -64,12 +65,27 @@ final class AchievementEngine {
         case .workoutStreak(let weeks):
             return context.currentStreak >= weeks
 
-        case .earlyBirdWorkouts(_):
-            // This requires additional context; skipped in basic eval
-            return false
+        case .earlyBirdWorkouts(let count):
+            let earlyCount = context.recentWorkouts.filter {
+                let hour = Calendar.current.component(.hour, from: $0.startedAt)
+                return hour < 9
+            }.count
+            if let triggerHour = context.triggeringWorkout.map({ Calendar.current.component(.hour, from: $0.startedAt) }),
+               triggerHour < 9 {
+                return earlyCount >= count
+            }
+            return earlyCount >= count
 
-        case .lateNightWorkouts(_):
-            return false
+        case .lateNightWorkouts(let count):
+            let lateCount = context.recentWorkouts.filter {
+                let hour = Calendar.current.component(.hour, from: $0.startedAt)
+                return hour >= 21
+            }.count
+            if let triggerHour = context.triggeringWorkout.map({ Calendar.current.component(.hour, from: $0.startedAt) }),
+               triggerHour >= 21 {
+                return lateCount >= count
+            }
+            return lateCount >= count
         }
     }
 
@@ -105,7 +121,8 @@ final class AchievementEngine {
             totalFriends: friends.filter { $0.status == .accepted }.count,
             workoutsPerMuscleGroup: muscleGroupCounts,
             alreadyUnlocked: unlockedIds,
-            triggeringWorkout: triggeringWorkout
+            triggeringWorkout: triggeringWorkout,
+            recentWorkouts: completedWorkouts
         )
     }
 

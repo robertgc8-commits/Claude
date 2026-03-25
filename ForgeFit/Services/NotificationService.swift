@@ -19,6 +19,10 @@ final class NotificationService {
 
     // MARK: - Streak Reminders
 
+    func cancelStreakReminder() {
+        center.removePendingNotificationRequests(withIdentifiers: ["streak_reminder"])
+    }
+
     func scheduleStreakReminder(hour: Int, remaining: Int, target: Int) {
         let id = "streak_reminder"
         center.removePendingNotificationRequests(withIdentifiers: [id])
@@ -75,6 +79,10 @@ final class NotificationService {
 
     func cancelInactivityReminder() {
         center.removePendingNotificationRequests(withIdentifiers: ["inactivity_reminder"])
+    }
+
+    func cancelWeeklyReport() {
+        center.removePendingNotificationRequests(withIdentifiers: ["weekly_report"])
     }
 
     // MARK: - Weekly Summary

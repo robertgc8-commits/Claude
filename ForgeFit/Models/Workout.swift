@@ -99,6 +99,8 @@ final class ExerciseSet {
     var notes: String?
     var isCompleted: Bool
     var isWarmup: Bool
+    var isDropSet: Bool      // set performed at reduced weight immediately after the preceding set
+    var supersetGroup: Int?  // nil = standalone; 1, 2, … = linked superset index within the exercise block
     var loggedAt: Date
 
     init(
@@ -118,6 +120,8 @@ final class ExerciseSet {
         self.notes = nil
         self.isCompleted = false
         self.isWarmup = isWarmup
+        self.isDropSet = false
+        self.supersetGroup = nil
         self.loggedAt = Date()
     }
 

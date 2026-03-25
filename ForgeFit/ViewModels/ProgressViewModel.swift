@@ -19,6 +19,13 @@ final class ProgressViewModel: ObservableObject {
     // Muscle group frequency
     @Published var muscleGroupFrequency: [(group: MuscleGroup, count: Int)] = []
 
+    // FEATURE 1: Strength Curve
+    @Published var strengthCurve: [(date: Date, estimated1RM: Double)] = []
+
+    // FEATURE 4: Body Measurements
+    @Published var measurements: [MeasurementType: [BodyMeasurementEntry]] = [:]
+    @Published var showingMeasurements = false
+
     private var prRepo: PRRepository?
     private var workoutRepo: WorkoutRepository?
     private var userId: String = ""
@@ -50,6 +57,7 @@ final class ProgressViewModel: ObservableObject {
 
             buildMuscleGroupFrequency(from: workouts)
             loadBodyWeight()
+            loadMeasurements()
         } catch {
             print("ProgressViewModel load error: \(error)")
         }
@@ -72,6 +80,40 @@ final class ProgressViewModel: ObservableObject {
             .filter { $0.exerciseName == name }
             .flatMap { $0.completedSets }
             .sorted { $0.loggedAt < $1.loggedAt }
+
+        // FEATURE 1: Build strength curve for this exercise
+        buildStrengthCurve(exerciseName: name, workouts: workouts)
+    }
+
+    // MARK: - Feature 1: Strength Curve
+
+    private func buildStrengthCurve(exerciseName: String, workouts: [Workout]) {
+        var curve: [(date: Date, estimated1RM: Double)] = []
+
+        for workout in workouts {
+            guard let completedAt = workout.completedAt else { continue }
+            let relevantExercises = (workout.exercises ?? []).filter { $0.exerciseName == exerciseName }
+            var best1RM: Double = 0
+
+            for exercise in relevantExercises {
+                for set in exercise.completedSets {
+                    guard set.reps > 0, set.reps < 37, set.weight > 0 else { continue }
+                    let estimated: Double
+                    if set.reps == 1 {
+                        estimated = set.weight
+                    } else {
+                        estimated = set.weight / (1.0278 - 0.0278 * Double(set.reps))
+                    }
+                    if estimated > best1RM { best1RM = estimated }
+                }
+            }
+
+            if best1RM > 0 {
+                curve.append((date: completedAt, estimated1RM: best1RM))
+            }
+        }
+
+        strengthCurve = curve.sorted { $0.date < $1.date }
     }
 
     var prsByExercise: [String: [PersonalRecord]] {
@@ -138,5 +180,54 @@ final class ProgressViewModel: ObservableObject {
     var bodyWeightTrend: Double? {
         guard bodyWeightEntries.count >= 2 else { return nil }
         return bodyWeightEntries[0].weightKg - bodyWeightEntries[1].weightKg
+    }
+
+    // MARK: - Feature 4: Body Measurements
+
+    func loadMeasurements() {
+        guard let ctx = context else { return }
+        let uid = userId
+        let descriptor = FetchDescriptor<BodyMeasurementEntry>(
+            predicate: #Predicate { $0.userId == uid },
+            sortBy: [SortDescriptor(\.loggedAt, order: .reverse)]
+        )
+        let all = (try? ctx.fetch(descriptor)) ?? []
+        var grouped: [MeasurementType: [BodyMeasurementEntry]] = [:]
+        for type in MeasurementType.allCases { grouped[type] = [] }
+        for entry in all {
+            grouped[entry.type, default: []].append(entry)
+        }
+        measurements = grouped
+    }
+
+    func logMeasurement(type: MeasurementType, value: Double) {
+        guard let ctx = context, value > 0 else { return }
+        let entry = BodyMeasurementEntry(userId: userId, type: type, valueCm: value)
+        ctx.insert(entry)
+        do {
+            try ctx.save()
+        } catch {
+            print("Measurement save error: \(error)")
+        }
+        loadMeasurements()
+    }
+
+    func deleteMeasurement(_ entry: BodyMeasurementEntry) {
+        guard let ctx = context else { return }
+        ctx.delete(entry)
+        try? ctx.save()
+        loadMeasurements()
+    }
+
+    func latestMeasurement(type: MeasurementType) -> BodyMeasurementEntry? {
+        measurements[type]?.first
+    }
+
+    /// Returns latest - earliest (negative = reduction, positive = increase)
+    func measurementDelta(type: MeasurementType) -> Double? {
+        guard let entries = measurements[type], entries.count >= 2 else { return nil }
+        let latest = entries[0].valueCm
+        let earliest = entries[entries.count - 1].valueCm
+        return latest - earliest
     }
 }

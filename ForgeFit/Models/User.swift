@@ -12,7 +12,6 @@ final class User {
     var createdAt: Date
     var updatedAt: Date
 
-    // Relationships
     @Relationship(deleteRule: .cascade) var settings: UserSettings?
     @Relationship(deleteRule: .cascade) var workouts: [Workout]?
     @Relationship(deleteRule: .cascade) var achievementUnlocks: [AchievementUnlock]?
@@ -43,8 +42,18 @@ final class User {
 final class UserSettings {
     var id: String
     var userId: String
-    var weeklyWorkoutTarget: Int  // 2-6 workouts per week
+    var weeklyWorkoutTarget: Int
     var preferredWeightUnit: WeightUnit
+
+    // Workout behaviour
+    var restTimerDuration: Int      // seconds between sets (default 90)
+    var defaultWeightIncrement: Double  // kg added per progressive overload step (default 2.5)
+
+    // Onboarding / goals
+    var fitnessGoal: FitnessGoal
+    var experienceLevel: ExperienceLevel
+    var startingWeightKg: Double?
+    var targetWeightKg: Double?
 
     // Privacy
     var isProfileDiscoverable: Bool
@@ -56,7 +65,7 @@ final class UserSettings {
     var shareStreaks: Bool
     var shareAchievements: Bool
 
-    // Friend notifications (what friends get when I do things)
+    // Friend notifications
     var notifyFriendsOnWorkout: Bool
     var notifyFriendsOnPR: Bool
     var notifyFriendsOnStreak: Bool
@@ -67,7 +76,7 @@ final class UserSettings {
     var receiveFriendActivityNotifs: Bool
     var receiveInactivityReminders: Bool
     var receiveWeeklyReport: Bool
-    var streakReminderHour: Int  // 0-23 hour of day
+    var streakReminderHour: Int
     var inactivityThresholdDays: Int
 
     init(userId: String) {
@@ -75,6 +84,12 @@ final class UserSettings {
         self.userId = userId
         self.weeklyWorkoutTarget = 4
         self.preferredWeightUnit = .kg
+        self.restTimerDuration = 90
+        self.defaultWeightIncrement = 2.5
+        self.fitnessGoal = .buildMuscle
+        self.experienceLevel = .intermediate
+        self.startingWeightKg = nil
+        self.targetWeightKg = nil
         self.isProfileDiscoverable = true
         self.profileVisibility = .friends
         self.shareWorkoutTitles = true
@@ -96,6 +111,8 @@ final class UserSettings {
     }
 }
 
+// MARK: - Enums
+
 enum WeightUnit: String, Codable, CaseIterable {
     case kg = "kg"
     case lbs = "lbs"
@@ -107,6 +124,9 @@ enum WeightUnit: String, Codable, CaseIterable {
         if self == .kg && target == .lbs { return value * 2.20462 }
         return value / 2.20462
     }
+
+    /// Sensible weight increment for progressive overload
+    var defaultIncrement: Double { self == .kg ? 2.5 : 5.0 }
 }
 
 enum ProfileVisibility: String, Codable, CaseIterable {
@@ -119,6 +139,67 @@ enum ProfileVisibility: String, Codable, CaseIterable {
         case .public: return "Everyone"
         case .friends: return "Friends Only"
         case .private: return "Only Me"
+        }
+    }
+}
+
+enum FitnessGoal: String, Codable, CaseIterable {
+    case loseFat       = "lose_fat"
+    case buildMuscle   = "build_muscle"
+    case improveFitness = "improve_fitness"
+
+    var label: String {
+        switch self {
+        case .loseFat:        return "Lose Fat"
+        case .buildMuscle:    return "Build Muscle"
+        case .improveFitness: return "Improve Fitness"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .loseFat:        return "flame.fill"
+        case .buildMuscle:    return "dumbbell.fill"
+        case .improveFitness: return "heart.fill"
+        }
+    }
+
+    var description: String {
+        switch self {
+        case .loseFat:
+            return "Focus on calorie-burning workouts and maintaining muscle"
+        case .buildMuscle:
+            return "Progressive overload and compound movements for size and strength"
+        case .improveFitness:
+            return "A balanced mix of strength, cardio, and endurance work"
+        }
+    }
+}
+
+enum ExperienceLevel: String, Codable, CaseIterable {
+    case beginner     = "beginner"
+    case intermediate = "intermediate"
+    case advanced     = "advanced"
+
+    var label: String { rawValue.capitalized }
+
+    var description: String {
+        switch self {
+        case .beginner:
+            return "Less than 1 year of consistent training"
+        case .intermediate:
+            return "1–3 years of consistent training"
+        case .advanced:
+            return "3+ years and comfortable with most lifts"
+        }
+    }
+
+    /// Multiplier applied to default starting weights for new exercises
+    var weightSeedMultiplier: Double {
+        switch self {
+        case .beginner:     return 0.4
+        case .intermediate: return 0.7
+        case .advanced:     return 1.0
         }
     }
 }

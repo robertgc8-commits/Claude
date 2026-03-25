@@ -11,6 +11,9 @@ struct ActiveWorkoutView: View {
     @State private var showingDiscardAlert = false
     @State private var showingFinishSummary = false
     @State private var showingNotes = false
+    @State private var showingTemplates = false
+    @State private var showingSaveAsTemplate = false
+    @State private var saveAsTemplateName = ""
 
     var body: some View {
         NavigationStack {
@@ -78,6 +81,17 @@ struct ActiveWorkoutView: View {
                     } label: {
                         Image(systemName: vm.workout.notes?.isEmpty == false ? "note.text" : "note.text.badge.plus")
                             .foregroundStyle(vm.workout.notes?.isEmpty == false ? Color.ffAccent : Color.ffSubtext)
+                    }
+                    Menu {
+                        Button {
+                            saveAsTemplateName = vm.workout.title
+                            showingSaveAsTemplate = true
+                        } label: {
+                            Label("Save as Template", systemImage: "square.and.arrow.down")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .foregroundStyle(Color.ffSubtext)
                     }
                     Button("Finish") {
                         HapticFeedback.success()

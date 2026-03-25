@@ -8,7 +8,8 @@ enum PreviewHelpers {
             User.self, Workout.self, WorkoutExercise.self, ExerciseSet.self,
             ExerciseTemplate.self, PersonalRecord.self, AchievementUnlock.self,
             WeeklyStreakRecord.self, FriendRelationship.self, FeedItem.self, UserSettings.self,
-            BodyWeightEntry.self,
+            BodyWeightEntry.self, BodyMeasurementEntry.self,
+            WorkoutTemplate.self, WorkoutTemplateExercise.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: true)
         return try! ModelContainer(for: schema, configurations: config)

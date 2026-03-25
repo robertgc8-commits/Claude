@@ -6,20 +6,36 @@ struct ExerciseSetRow: View {
     let lastReps: Int?
     let lastWeight: Double?
     let isPR: Bool
+    var unit: WeightUnit = .kg
     var onComplete: () -> Void
     var onDelete: () -> Void
 
     @FocusState private var repsFieldFocused: Bool
     @FocusState private var weightFieldFocused: Bool
 
+    @State private var showingPlateCalculator = false
+
     var body: some View {
         VStack(spacing: 6) {
             HStack(spacing: 12) {
-                // Set number
-                Text(set.isWarmup ? "W" : "\(setNumber)")
-                    .font(.system(size: 13, weight: .bold, design: .monospaced))
-                    .foregroundStyle(set.isWarmup ? Color.ffSubtext : Color.ffAccent)
-                    .frame(width: 24)
+                // Set number + optional DS badge
+                VStack(alignment: .center, spacing: 2) {
+                    Text(set.isWarmup ? "W" : "\(setNumber)")
+                        .font(.system(size: 13, weight: .bold, design: .monospaced))
+                        .foregroundStyle(set.isWarmup ? Color.ffSubtext : Color.ffAccent)
+                    if set.isDropSet {
+                        Text("DS")
+                            .font(.system(size: 8, weight: .black))
+                            .foregroundStyle(.white)
+                            .padding(.horizontal, 4)
+                            .padding(.vertical, 1)
+                            .background(Color.ffOrange)
+                            .clipShape(Capsule())
+                            .transition(.scale.combined(with: .opacity))
+                    }
+                }
+                .frame(width: 24)
+                .animation(.easeInOut(duration: 0.18), value: set.isDropSet)
 
                 // Previous performance hint
                 VStack(spacing: 1) {
@@ -36,18 +52,34 @@ struct ExerciseSetRow: View {
 
                 Spacer()
 
-                // Weight field
-                HStack(spacing: 2) {
-                    TextField("0", value: $set.weight, format: .number)
-                        .keyboardType(.decimalPad)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 52)
-                        .focused($weightFieldFocused)
-                    Text("kg").font(.system(size: 12)).foregroundStyle(Color.ffSubtext)
+                // Weight field + plate calculator button
+                HStack(spacing: 4) {
+                    HStack(spacing: 2) {
+                        TextField("0", value: $set.weight, format: .number)
+                            .keyboardType(.decimalPad)
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 52)
+                            .focused($weightFieldFocused)
+                        Text(unit.label).font(.system(size: 12)).foregroundStyle(Color.ffSubtext)
+                    }
+                    .padding(.horizontal, 8).padding(.vertical, 6)
+                    .background(Color.ffSurface2)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+
+                    // Plate calculator icon
+                    Button {
+                        HapticFeedback.impact(.light)
+                        showingPlateCalculator = true
+                    } label: {
+                        Image(systemName: "scalemass")
+                            .font(.system(size: 13))
+                            .foregroundStyle(Color.ffSubtext)
+                            .frame(width: 26, height: 26)
+                            .background(Color.ffSurface2)
+                            .clipShape(RoundedRectangle(cornerRadius: 6))
+                    }
+                    .buttonStyle(.plain)
                 }
-                .padding(.horizontal, 8).padding(.vertical, 6)
-                .background(Color.ffSurface2)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
 
                 Text("×").foregroundStyle(Color.ffSubtext)
 
@@ -86,7 +118,7 @@ struct ExerciseSetRow: View {
                 .buttonStyle(.plain)
             }
 
-            // RPE row — shown after set is completed
+            // RPE + Drop Set row — shown after set is completed
             if set.isCompleted {
                 HStack(spacing: 6) {
                     Text("RPE")
@@ -108,7 +140,24 @@ struct ExerciseSetRow: View {
                         }
                         .buttonStyle(.plain)
                     }
+
                     Spacer()
+
+                    // Drop Set toggle capsule
+                    Button {
+                        HapticFeedback.impact(.light)
+                        set.isDropSet.toggle()
+                    } label: {
+                        Text("Drop Set")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(set.isDropSet ? .white : Color.ffOrange)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(set.isDropSet ? Color.ffOrange : Color.ffOrange.opacity(0.15))
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .animation(.easeInOut(duration: 0.18), value: set.isDropSet)
                 }
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
@@ -119,6 +168,9 @@ struct ExerciseSetRow: View {
             Button(role: .destructive, action: onDelete) {
                 Label("Delete", systemImage: "trash")
             }
+        }
+        .sheet(isPresented: $showingPlateCalculator) {
+            PlateCalculatorView(targetWeight: set.weight > 0 ? set.weight : 20, unit: unit)
         }
     }
 

@@ -6,6 +6,9 @@ struct HomeView: View {
     @EnvironmentObject private var appState: AppState
     @StateObject private var vm = HomeViewModel()
 
+    // FEATURE 2: Calendar section collapse state
+    @State private var calendarExpanded = false
+
     var body: some View {
         NavigationStack {
             ScrollView {
@@ -13,12 +16,18 @@ struct HomeView: View {
                     // Greeting
                     greetingHeader
 
-                    // Stats row
+                    // Stats row (This Week + Streak)
                     statsRow
+
+                    // FEATURE 3: All-time stats row
+                    allTimeStatsRow
 
                     // Streak card
                     StreakCard(status: vm.streakStatus)
                         .padding(.horizontal, 16)
+
+                    // FEATURE 2: Collapsible calendar heatmap
+                    calendarSection
 
                     // Recent PRs
                     if !vm.recentPRs.isEmpty {
@@ -102,6 +111,8 @@ struct HomeView: View {
         }
     }
 
+    // MARK: - Greeting
+
     private var greetingHeader: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(greetingText)
@@ -113,6 +124,8 @@ struct HomeView: View {
         }
         .padding(.horizontal, 16)
     }
+
+    // MARK: - Stats Row (This Week + Streak)
 
     private var statsRow: some View {
         HStack(spacing: 12) {
@@ -133,6 +146,74 @@ struct HomeView: View {
         }
         .padding(.horizontal, 16)
     }
+
+    // MARK: - Feature 3: All-Time Stats Row
+
+    private var allTimeStatsRow: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("All Time")
+                .ffSectionHeader()
+                .padding(.horizontal, 16)
+
+            HStack(spacing: 12) {
+                StatCard(
+                    title: "Workouts",
+                    value: "\(vm.totalWorkouts)",
+                    subtitle: "completed",
+                    icon: "dumbbell.fill",
+                    iconColor: .ffAccent
+                )
+                StatCard(
+                    title: "Volume",
+                    value: vm.totalWeightLifted.allTimeVolumeDisplay(),
+                    subtitle: "kg lifted",
+                    icon: "chart.bar.fill",
+                    iconColor: .ffOrange
+                )
+                StatCard(
+                    title: "Time",
+                    value: vm.totalWorkoutMinutes.totalTimeDisplay(),
+                    subtitle: "in gym",
+                    icon: "clock.fill",
+                    iconColor: .ffGreen
+                )
+            }
+            .padding(.horizontal, 16)
+        }
+    }
+
+    // MARK: - Feature 2: Collapsible Calendar Section
+
+    private var calendarSection: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.25)) {
+                    calendarExpanded.toggle()
+                }
+            } label: {
+                HStack {
+                    Text("Calendar")
+                        .ffSectionHeader()
+                    Spacer()
+                    Image(systemName: calendarExpanded ? "chevron.up" : "chevron.down")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Color.ffSubtext)
+                }
+                .padding(.horizontal, 16)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if calendarExpanded {
+                WorkoutCalendarView(calendarWorkouts: vm.calendarWorkouts)
+                    .padding(.horizontal, 16)
+                    .padding(.top, 10)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+    }
+
+    // MARK: - Empty
 
     private var emptyState: some View {
         VStack(spacing: 16) {
@@ -159,5 +240,26 @@ struct HomeView: View {
         if hour < 12 { return "Good morning" }
         if hour < 17 { return "Good afternoon" }
         return "Good evening"
+    }
+}
+
+// MARK: - Formatting helpers for all-time stats
+
+private extension Double {
+    func allTimeVolumeDisplay() -> String {
+        if self >= 1_000_000 {
+            return String(format: "%.1fM", self / 1_000_000)
+        } else if self >= 1_000 {
+            return String(format: "%.1fk", self / 1_000)
+        }
+        return String(format: "%.0f", self)
+    }
+}
+
+private extension Int {
+    func totalTimeDisplay() -> String {
+        let hours = self / 60
+        if hours >= 1 { return "\(hours)h" }
+        return "\(self)m"
     }
 }

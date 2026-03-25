@@ -68,6 +68,12 @@
 	EEC3D0995AF9D29395112027 /* AchievementEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD61664E69BF8AC4EF823581 /* AchievementEngineTests.swift */; };
 	2351BBE0D1262D2FBDB5B474 /* ProgressOverloadEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4534E58C13B58B5DF01F226B /* ProgressOverloadEngineTests.swift */; };
 	37DDE9CA39A5450547DBBB05 /* StreakEngineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 783521E4351522AB78922B41 /* StreakEngineTests.swift */; };
+	A1000002B2C3D4E5F6000002 /* PlateCalculatorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000001B2C3D4E5F6000001 /* PlateCalculatorView.swift */; };
+	A1000004B2C3D4E5F6000004 /* WorkoutTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000003B2C3D4E5F6000003 /* WorkoutTemplate.swift */; };
+	A1000006B2C3D4E5F6000006 /* BodyMeasurement.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000005B2C3D4E5F6000005 /* BodyMeasurement.swift */; };
+	A1000008B2C3D4E5F6000008 /* WorkoutTemplateRepository.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000007B2C3D4E5F6000007 /* WorkoutTemplateRepository.swift */; };
+	A100000AB2C3D4E5F600000A /* WorkoutCalendarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1000009B2C3D4E5F6000009 /* WorkoutCalendarView.swift */; };
+	A100000CB2C3D4E5F600000C /* WorkoutTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A100000BB2C3D4E5F600000B /* WorkoutTemplatesView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -144,6 +150,12 @@
 	DD61664E69BF8AC4EF823581 /* AchievementEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AchievementEngineTests.swift; sourceTree = "<group>"; };
 	4534E58C13B58B5DF01F226B /* ProgressOverloadEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressOverloadEngineTests.swift; sourceTree = "<group>"; };
 	783521E4351522AB78922B41 /* StreakEngineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreakEngineTests.swift; sourceTree = "<group>"; };
+	A1000001B2C3D4E5F6000001 /* PlateCalculatorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlateCalculatorView.swift; sourceTree = "<group>"; };
+	A1000003B2C3D4E5F6000003 /* WorkoutTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplate.swift; sourceTree = "<group>"; };
+	A1000005B2C3D4E5F6000005 /* BodyMeasurement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyMeasurement.swift; sourceTree = "<group>"; };
+	A1000007B2C3D4E5F6000007 /* WorkoutTemplateRepository.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplateRepository.swift; sourceTree = "<group>"; };
+	A1000009B2C3D4E5F6000009 /* WorkoutCalendarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutCalendarView.swift; sourceTree = "<group>"; };
+	A100000BB2C3D4E5F600000B /* WorkoutTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplatesView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -261,6 +273,7 @@
 		isa = PBXGroup;
 		children = (
 			DAE977CDE04257987F58D1DC /* ExerciseSetRow.swift */,
+			A1000001B2C3D4E5F6000001 /* PlateCalculatorView.swift */,
 		);
 		path = Workout;
 		sourceTree = "<group>";
@@ -298,6 +311,7 @@
 		isa = PBXGroup;
 		children = (
 			755DB46AED7AEB5E0CCC0E21 /* Achievement.swift */,
+			A1000005B2C3D4E5F6000005 /* BodyMeasurement.swift */,
 			3593F19C9236DBE698645A4E /* ExerciseTemplate.swift */,
 			04D9EA501B7C3DDDB92A6647 /* PersonalRecord.swift */,
 			5913CE24D11FF532557CF7D0 /* Social.swift */,
@@ -305,6 +319,7 @@
 			88A1C8BCEA0A6BFF7AC588C5 /* Streak.swift */,
 			6715C8DA61BE5A9C01C442A6 /* User.swift */,
 			04C0944B12005E8E8CAAD896 /* Workout.swift */,
+			A1000003B2C3D4E5F6000003 /* WorkoutTemplate.swift */,
 		);
 		path = Models;
 		sourceTree = "<group>";
@@ -317,6 +332,7 @@
 			49E0B0F6B6F318F58C75B67D /* PRRepository.swift */,
 			27F2DF2778BD207643C71F3D /* UserRepository.swift */,
 			46C62DC2A20700F1D8788BB8 /* WorkoutRepository.swift */,
+			A1000007B2C3D4E5F6000007 /* WorkoutTemplateRepository.swift */,
 		);
 		path = Repositories;
 		sourceTree = "<group>";
@@ -382,6 +398,7 @@
 		isa = PBXGroup;
 		children = (
 			7371358EB16619583CF56803 /* HomeView.swift */,
+			A1000009B2C3D4E5F6000009 /* WorkoutCalendarView.swift */,
 		);
 		path = Home;
 		sourceTree = "<group>";
@@ -435,6 +452,7 @@
 			84D51595436B094D1A77CA6A /* ExercisePickerView.swift */,
 			E8FC252009D36528964C9788 /* WorkoutHistoryView.swift */,
 			14EAA688A4156D2865B4400E /* WorkoutSummaryView.swift */,
+			A100000BB2C3D4E5F600000B /* WorkoutTemplatesView.swift */,
 		);
 		path = Workout;
 		sourceTree = "<group>";
@@ -597,6 +615,12 @@
 			F2046544CE707B49E6CBAEBE /* ExercisePickerView.swift in Sources */,
 			63B38C83E8C37249025DCF40 /* WorkoutHistoryView.swift in Sources */,
 			E91CC56EE67C0F59EAB627B1 /* WorkoutSummaryView.swift in Sources */,
+			A1000002B2C3D4E5F6000002 /* PlateCalculatorView.swift in Sources */,
+			A1000004B2C3D4E5F6000004 /* WorkoutTemplate.swift in Sources */,
+			A1000006B2C3D4E5F6000006 /* BodyMeasurement.swift in Sources */,
+			A1000008B2C3D4E5F6000008 /* WorkoutTemplateRepository.swift in Sources */,
+			A100000AB2C3D4E5F600000A /* WorkoutCalendarView.swift in Sources */,
+			A100000CB2C3D4E5F600000C /* WorkoutTemplatesView.swift in Sources */,
 		);
 		runOnlyForDeploymentPostprocessing = 0;
 	};

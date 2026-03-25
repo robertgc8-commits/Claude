@@ -15,6 +15,14 @@ final class HomeViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
+    // FEATURE 2: Calendar heatmap — normalized day → workout count
+    @Published var calendarWorkouts: [Date: Int] = [:]
+
+    // FEATURE 3: All-time stats
+    @Published var totalWorkouts: Int = 0
+    @Published var totalWeightLifted: Double = 0
+    @Published var totalWorkoutMinutes: Int = 0
+
     private var workoutRepo: WorkoutRepository?
     private var prRepo: PRRepository?
     private var userRepo: UserRepository?
@@ -58,6 +66,12 @@ final class HomeViewModel: ObservableObject {
 
             // Recent PRs
             recentPRs = try prRepo.fetchRecentPRs(userId: userId, limit: 3)
+
+            // FEATURE 2: Calendar heatmap
+            buildCalendarWorkouts(from: allWorkouts)
+
+            // FEATURE 3: All-time stats
+            computeAllTimeStats(from: allWorkouts)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -72,5 +86,35 @@ final class HomeViewModel: ObservableObject {
             sortBy: [SortDescriptor(\.weekStartDate)]
         )
         return try context.fetch(descriptor)
+    }
+
+    // MARK: - Feature 2: Calendar heatmap
+
+    private func buildCalendarWorkouts(from workouts: [Workout]) {
+        let calendar = Calendar.current
+        var counts: [Date: Int] = [:]
+        for workout in workouts {
+            guard let completedAt = workout.completedAt else { continue }
+            let day = calendar.startOfDay(for: completedAt)
+            counts[day, default: 0] += 1
+        }
+        calendarWorkouts = counts
+    }
+
+    // MARK: - Feature 3: All-time stats
+
+    private func computeAllTimeStats(from workouts: [Workout]) {
+        totalWorkouts = workouts.count
+
+        var volume: Double = 0
+        var minutes: Int = 0
+        for workout in workouts {
+            volume += workout.totalVolume
+            if let dur = workout.durationSeconds {
+                minutes += dur / 60
+            }
+        }
+        totalWeightLifted = volume
+        totalWorkoutMinutes = minutes
     }
 }

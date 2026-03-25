@@ -20,6 +20,9 @@ struct ForgeFitApp: App {
             FeedItem.self,
             UserSettings.self,
             BodyWeightEntry.self,
+            BodyMeasurementEntry.self,
+            WorkoutTemplate.self,
+            WorkoutTemplateExercise.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

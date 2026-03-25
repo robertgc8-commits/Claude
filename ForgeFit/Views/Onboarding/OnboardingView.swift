@@ -109,51 +109,162 @@ private struct SetGoalStep: View {
     private let targets = [2, 3, 4, 5, 6]
 
     var body: some View {
-        VStack(spacing: 32) {
-            OnboardingHeader(title: vm.currentStep.title, step: 2, total: 4)
-                .padding(.horizontal, 24)
+        ScrollView {
+            VStack(spacing: 28) {
+                OnboardingHeader(title: vm.currentStep.title, step: 2, total: 4)
 
-            Text("How many times per week do you want to work out?")
-                .font(.system(size: 17))
-                .foregroundStyle(Color.ffSubtext)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
+                // Fitness Goal
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("What's your main goal?")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.ffText)
 
-            HStack(spacing: 12) {
-                ForEach(targets, id: \.self) { n in
-                    Button {
-                        HapticFeedback.impact(.light)
-                        vm.weeklyTarget = n
-                    } label: {
-                        VStack(spacing: 4) {
-                            Text("\(n)")
-                                .font(.system(size: 28, weight: .black, design: .rounded))
-                            Text("x / week")
-                                .font(.system(size: 11))
+                    VStack(spacing: 8) {
+                        ForEach(FitnessGoal.allCases, id: \.self) { goal in
+                            Button {
+                                HapticFeedback.impact(.light)
+                                vm.fitnessGoal = goal
+                            } label: {
+                                HStack(spacing: 14) {
+                                    Image(systemName: goal.icon)
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(vm.fitnessGoal == goal ? Color.ffAccent : Color.ffSubtext)
+                                        .frame(width: 36)
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(goal.label)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(Color.ffText)
+                                        Text(goal.description)
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Color.ffSubtext)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    Spacer()
+                                    if vm.fitnessGoal == goal {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(Color.ffAccent)
+                                    }
+                                }
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(vm.fitnessGoal == goal ? Color.ffAccent.opacity(0.12) : Color.ffSurface)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .strokeBorder(vm.fitnessGoal == goal ? Color.ffAccent : Color.clear, lineWidth: 1.5)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .foregroundStyle(vm.weeklyTarget == n ? Color.white : Color.ffSubtext)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 20)
-                        .background(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .fill(vm.weeklyTarget == n ? Color.ffAccent : Color.ffSurface)
-                        )
                     }
-                    .buttonStyle(.plain)
                 }
+
+                // Experience Level
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Your experience level")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.ffText)
+
+                    VStack(spacing: 8) {
+                        ForEach(ExperienceLevel.allCases, id: \.self) { level in
+                            Button {
+                                HapticFeedback.impact(.light)
+                                vm.experienceLevel = level
+                            } label: {
+                                HStack(spacing: 14) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(level.label)
+                                            .font(.system(size: 15, weight: .semibold))
+                                            .foregroundStyle(Color.ffText)
+                                        Text(level.description)
+                                            .font(.system(size: 12))
+                                            .foregroundStyle(Color.ffSubtext)
+                                    }
+                                    Spacer()
+                                    if vm.experienceLevel == level {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundStyle(Color.ffAccent)
+                                    }
+                                }
+                                .padding(14)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                        .fill(vm.experienceLevel == level ? Color.ffAccent.opacity(0.12) : Color.ffSurface)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                                .strokeBorder(vm.experienceLevel == level ? Color.ffAccent : Color.clear, lineWidth: 1.5)
+                                        )
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+
+                // Weight Inputs
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Weight (optional)")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.ffText)
+
+                    HStack(spacing: 12) {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Starting weight (kg)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.ffSubtext)
+                            FFTextField(placeholder: "e.g. 80", text: $vm.startingWeightInput)
+                                .keyboardType(.decimalPad)
+                        }
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("Target weight (kg)")
+                                .font(.system(size: 11))
+                                .foregroundStyle(Color.ffSubtext)
+                            FFTextField(placeholder: "e.g. 75", text: $vm.targetWeightInput)
+                                .keyboardType(.decimalPad)
+                        }
+                    }
+                }
+
+                // Weekly Target
+                VStack(alignment: .leading, spacing: 10) {
+                    Text("Weekly workout target")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(Color.ffText)
+
+                    HStack(spacing: 12) {
+                        ForEach(targets, id: \.self) { n in
+                            Button {
+                                HapticFeedback.impact(.light)
+                                vm.weeklyTarget = n
+                            } label: {
+                                VStack(spacing: 4) {
+                                    Text("\(n)")
+                                        .font(.system(size: 24, weight: .black, design: .rounded))
+                                    Text("x / wk")
+                                        .font(.system(size: 10))
+                                }
+                                .foregroundStyle(vm.weeklyTarget == n ? Color.white : Color.ffSubtext)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12, style: .continuous)
+                                        .fill(vm.weeklyTarget == n ? Color.ffAccent : Color.ffSurface)
+                                )
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    Text("A streak is maintained each week you hit this target.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(Color.ffSubtext)
+                }
+
+                FFButton(title: "Continue", style: .primary) { vm.saveGoal() }
+                    .padding(.bottom, 40)
             }
-            .padding(.horizontal, 24)
-
-            Text("A streak is maintained each week you hit this target.")
-                .font(.system(size: 13))
-                .foregroundStyle(Color.ffSubtext)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 32)
-
-            Spacer()
-            FFButton(title: "Continue", style: .primary) { vm.saveGoal() }
-                .padding(.horizontal, 24)
-                .padding(.bottom, 40)
+            .padding(24)
         }
     }
 }
