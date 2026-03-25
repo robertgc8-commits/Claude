@@ -4,14 +4,7 @@ import SwiftData
 struct FeedView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var vm: FeedViewModel
-
-    init() {
-        _vm = StateObject(wrappedValue: FeedViewModel(
-            context: ModelContext(try! ModelContainer(for: FeedItem.self)),
-            userId: ""
-        ))
-    }
+    @StateObject private var vm = FeedViewModel()
 
     var body: some View {
         Group {

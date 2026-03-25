@@ -19,17 +19,12 @@ final class ProgressViewModel: ObservableObject {
     // Muscle group frequency
     @Published var muscleGroupFrequency: [(group: MuscleGroup, count: Int)] = []
 
-    private var prRepo: PRRepository
-    private var workoutRepo: WorkoutRepository
-    private var userId: String
-    private var context: ModelContext
+    private var prRepo: PRRepository?
+    private var workoutRepo: WorkoutRepository?
+    private var userId: String = ""
+    private var context: ModelContext?
 
-    init(context: ModelContext, userId: String) {
-        self.context = context
-        self.prRepo = PRRepository(context: context)
-        self.workoutRepo = WorkoutRepository(context: context)
-        self.userId = userId
-    }
+    init() {}
 
     func configure(context: ModelContext, userId: String) {
         self.context = context
@@ -39,6 +34,7 @@ final class ProgressViewModel: ObservableObject {
     }
 
     func load() {
+        guard let prRepo, let workoutRepo else { return }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -61,7 +57,7 @@ final class ProgressViewModel: ObservableObject {
 
     func selectExercise(_ name: String) {
         selectedExercise = name
-        let workouts = (try? workoutRepo.fetchCompletedWorkouts(userId: userId)) ?? []
+        let workouts = (try? workoutRepo?.fetchCompletedWorkouts(userId: userId)) ?? []
         selectExercise(name, workouts: workouts)
     }
 
@@ -104,29 +100,36 @@ final class ProgressViewModel: ObservableObject {
 
     // MARK: - Body Weight
 
-    private func loadBodyWeight() {
+    func loadBodyWeight() {
+        guard let ctx = context else { return }
         let uid = userId
         let descriptor = FetchDescriptor<BodyWeightEntry>(
             predicate: #Predicate { $0.userId == uid },
             sortBy: [SortDescriptor(\.loggedAt, order: .reverse)]
         )
-        bodyWeightEntries = (try? context.fetch(descriptor)) ?? []
+        bodyWeightEntries = (try? ctx.fetch(descriptor)) ?? []
     }
 
     func logBodyWeight() {
-        guard let value = Double(bodyWeightInput.replacingOccurrences(of: ",", with: ".")),
+        guard let ctx = context,
+              let value = Double(bodyWeightInput.replacingOccurrences(of: ",", with: ".")),
               value > 0 else { return }
         let entry = BodyWeightEntry(userId: userId, weightKg: value)
-        context.insert(entry)
-        try? context.save()
+        ctx.insert(entry)
+        do {
+            try ctx.save()
+        } catch {
+            print("Body weight save error: \(error)")
+        }
         bodyWeightInput = ""
         showingBodyWeightInput = false
         loadBodyWeight()
     }
 
     func deleteBodyWeightEntry(_ entry: BodyWeightEntry) {
-        context.delete(entry)
-        try? context.save()
+        guard let ctx = context else { return }
+        ctx.delete(entry)
+        try? ctx.save()
         loadBodyWeight()
     }
 

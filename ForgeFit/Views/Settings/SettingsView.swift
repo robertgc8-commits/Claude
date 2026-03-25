@@ -5,14 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @StateObject private var vm: SettingsViewModel
-
-    init() {
-        _vm = StateObject(wrappedValue: SettingsViewModel(
-            context: ModelContext(try! ModelContainer(for: UserSettings.self)),
-            userId: ""
-        ))
-    }
+    @StateObject private var vm = SettingsViewModel()
 
     var body: some View {
         NavigationStack {

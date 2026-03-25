@@ -7,14 +7,11 @@ final class SettingsViewModel: ObservableObject {
     @Published var settings: UserSettings?
     @Published var isSaving = false
 
-    private var userRepo: UserRepository
+    private var userRepo: UserRepository?
     private let notificationService = NotificationService.shared
-    private var userId: String
+    private var userId: String = ""
 
-    init(context: ModelContext, userId: String) {
-        self.userRepo = UserRepository(context: context)
-        self.userId = userId
-    }
+    init() {}
 
     func configure(context: ModelContext, userId: String) {
         self.userRepo = UserRepository(context: context)
@@ -22,10 +19,12 @@ final class SettingsViewModel: ObservableObject {
     }
 
     func load() {
+        guard let userRepo = userRepo else { return }
         settings = try? userRepo.fetchSettings(userId: userId)
     }
 
     func save() {
+        guard let userRepo = userRepo else { return }
         isSaving = true
         defer { isSaving = false }
         do {

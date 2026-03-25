@@ -4,17 +4,9 @@ import SwiftData
 struct WorkoutHistoryView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var vm: WorkoutHistoryViewModel
+    @StateObject private var vm = WorkoutHistoryViewModel()
 
     @State private var selectedWorkout: Workout?
-    @State private var showingStartNew = false
-
-    init() {
-        _vm = StateObject(wrappedValue: WorkoutHistoryViewModel(
-            context: ModelContext(try! ModelContainer(for: Workout.self)),
-            userId: ""
-        ))
-    }
 
     var body: some View {
         NavigationStack {
@@ -74,6 +66,13 @@ struct WorkoutHistoryView: View {
             vm.configure(context: modelContext, userId: appState.currentUserId)
             vm.load()
         }
+        // Reload whenever the active workout sheet closes (new workout may have been saved)
+        .onChange(of: appState.showingActiveWorkout) { _, isShowing in
+            if !isShowing {
+                vm.configure(context: modelContext, userId: appState.currentUserId)
+                vm.load()
+            }
+        }
     }
 
     private func filterChip(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
@@ -105,7 +104,7 @@ struct WorkoutHistoryView: View {
                         .listRowBackground(Color.clear)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 4, leading: 16, bottom: 4, trailing: 16))
-                        .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                        .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                             Button(role: .destructive) {
                                 vm.deleteWorkout(workout)
                             } label: {

@@ -4,15 +4,8 @@ import SwiftData
 struct AchievementsView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var vm: AchievementsViewModel
+    @StateObject private var vm = AchievementsViewModel()
     @State private var selectedAchievement: AchievementDefinition?
-
-    init() {
-        _vm = StateObject(wrappedValue: AchievementsViewModel(
-            context: ModelContext(try! ModelContainer(for: AchievementUnlock.self)),
-            userId: ""
-        ))
-    }
 
     var body: some View {
         NavigationStack {

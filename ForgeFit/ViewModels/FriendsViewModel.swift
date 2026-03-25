@@ -11,15 +11,11 @@ final class FriendsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private var friendRepo: FriendRepository
-    private var context: ModelContext
-    private var userId: String
+    private var friendRepo: FriendRepository?
+    private var context: ModelContext?
+    private var userId: String = ""
 
-    init(context: ModelContext, userId: String) {
-        self.context = context
-        self.userId = userId
-        self.friendRepo = FriendRepository(context: context)
-    }
+    init() {}
 
     func configure(context: ModelContext, userId: String) {
         self.context = context
@@ -28,6 +24,7 @@ final class FriendsViewModel: ObservableObject {
     }
 
     func load() {
+        guard let friendRepo = friendRepo else { return }
         isLoading = true
         defer { isLoading = false }
         do {
@@ -56,6 +53,7 @@ final class FriendsViewModel: ObservableObject {
     }
 
     func sendRequest(to result: MockFriendSearchResult) {
+        guard let context = context, let friendRepo = friendRepo else { return }
         let relationship = FriendRelationship(
             requesterId: userId,
             receiverId: result.id,
@@ -71,18 +69,21 @@ final class FriendsViewModel: ObservableObject {
     }
 
     func acceptRequest(_ relationship: FriendRelationship) {
+        guard let friendRepo = friendRepo else { return }
         friendRepo.acceptRequest(relationship)
         try? friendRepo.save()
         load()
     }
 
     func declineRequest(_ relationship: FriendRelationship) {
+        guard let friendRepo = friendRepo else { return }
         friendRepo.declineOrRemove(relationship)
         try? friendRepo.save()
         load()
     }
 
     func removeFriend(_ relationship: FriendRelationship) {
+        guard let friendRepo = friendRepo else { return }
         friendRepo.declineOrRemove(relationship)
         try? friendRepo.save()
         load()

@@ -4,14 +4,7 @@ import SwiftData
 struct HomeView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var appState: AppState
-    @StateObject private var vm: HomeViewModel
-
-    init() {
-        _vm = StateObject(wrappedValue: HomeViewModel(
-            context: ModelContext(try! ModelContainer(for: Workout.self)),
-            userId: ""
-        ))
-    }
+    @StateObject private var vm = HomeViewModel()
 
     var body: some View {
         NavigationStack {
@@ -100,6 +93,12 @@ struct HomeView: View {
         .onAppear {
             vm.configure(context: modelContext, userId: appState.currentUserId)
             vm.loadDashboard()
+        }
+        .onChange(of: appState.showingActiveWorkout) { _, isShowing in
+            if !isShowing {
+                vm.configure(context: modelContext, userId: appState.currentUserId)
+                vm.loadDashboard()
+            }
         }
     }
 

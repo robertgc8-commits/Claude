@@ -4,15 +4,8 @@ import SwiftData
 struct FriendsView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var vm: FriendsViewModel
+    @StateObject private var vm = FriendsViewModel()
     @State private var showingSearch = false
-
-    init() {
-        _vm = StateObject(wrappedValue: FriendsViewModel(
-            context: ModelContext(try! ModelContainer(for: FriendRelationship.self)),
-            userId: ""
-        ))
-    }
 
     var body: some View {
         ScrollView {

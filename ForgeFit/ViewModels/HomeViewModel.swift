@@ -15,19 +15,13 @@ final class HomeViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    private var workoutRepo: WorkoutRepository
-    private var prRepo: PRRepository
-    private var userRepo: UserRepository
-    private var userId: String
-    private var context: ModelContext
+    private var workoutRepo: WorkoutRepository?
+    private var prRepo: PRRepository?
+    private var userRepo: UserRepository?
+    private var userId: String = ""
+    private var context: ModelContext?
 
-    init(context: ModelContext, userId: String) {
-        self.context = context
-        self.workoutRepo = WorkoutRepository(context: context)
-        self.prRepo = PRRepository(context: context)
-        self.userRepo = UserRepository(context: context)
-        self.userId = userId
-    }
+    init() {}
 
     func configure(context: ModelContext, userId: String) {
         self.context = context
@@ -38,6 +32,9 @@ final class HomeViewModel: ObservableObject {
     }
 
     func loadDashboard() {
+        guard let workoutRepo = workoutRepo,
+              let prRepo = prRepo,
+              let userRepo = userRepo else { return }
         isLoading = true
         do {
             let allWorkouts = try workoutRepo.fetchCompletedWorkouts(userId: userId)
@@ -68,6 +65,7 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func fetchWeeklyRecords() throws -> [WeeklyStreakRecord] {
+        guard let context = context else { return [] }
         let uid = userId
         let descriptor = FetchDescriptor<WeeklyStreakRecord>(
             predicate: #Predicate { $0.userId == uid },

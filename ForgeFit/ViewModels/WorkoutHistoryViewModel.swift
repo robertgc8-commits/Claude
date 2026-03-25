@@ -8,13 +8,10 @@ final class WorkoutHistoryViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var filterMuscleGroup: MuscleGroup? = nil
 
-    private var workoutRepo: WorkoutRepository
-    private var userId: String
+    private var workoutRepo: WorkoutRepository?
+    private var userId: String = ""
 
-    init(context: ModelContext, userId: String) {
-        self.workoutRepo = WorkoutRepository(context: context)
-        self.userId = userId
-    }
+    init() {}
 
     func configure(context: ModelContext, userId: String) {
         self.workoutRepo = WorkoutRepository(context: context)
@@ -51,20 +48,23 @@ final class WorkoutHistoryViewModel: ObservableObject {
     }
 
     func load() {
+        guard let repo = workoutRepo else { return }
         isLoading = true
         defer { isLoading = false }
-        workouts = (try? workoutRepo.fetchCompletedWorkouts(userId: userId)) ?? []
+        workouts = (try? repo.fetchCompletedWorkouts(userId: userId)) ?? []
     }
 
     func deleteWorkout(_ workout: Workout) {
-        workoutRepo.deleteWorkout(workout)
-        try? workoutRepo.save()
+        guard let repo = workoutRepo else { return }
+        repo.deleteWorkout(workout)
+        try? repo.save()
         load()
     }
 
-    func duplicateWorkout(_ workout: Workout) -> Workout {
-        let copy = workoutRepo.duplicateWorkout(workout, userId: userId)
-        try? workoutRepo.save()
+    func duplicateWorkout(_ workout: Workout) -> Workout? {
+        guard let repo = workoutRepo else { return nil }
+        let copy = repo.duplicateWorkout(workout, userId: userId)
+        try? repo.save()
         return copy
     }
 }

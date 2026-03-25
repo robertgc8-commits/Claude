@@ -8,14 +8,12 @@ final class FeedViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var isRefreshing = false
 
-    private var feedRepo: FeedRepository
+    private var feedRepo: FeedRepository?
     private let syncService: SyncServiceProtocol
-    private var userId: String
+    private var userId: String = ""
 
-    init(context: ModelContext, userId: String, syncService: SyncServiceProtocol = MockSyncService()) {
-        self.feedRepo = FeedRepository(context: context)
+    init(syncService: SyncServiceProtocol = MockSyncService()) {
         self.syncService = syncService
-        self.userId = userId
     }
 
     func configure(context: ModelContext, userId: String) {
@@ -24,6 +22,7 @@ final class FeedViewModel: ObservableObject {
     }
 
     func load() {
+        guard let feedRepo = feedRepo else { return }
         isLoading = true
         feedItems = (try? feedRepo.fetchFeed()) ?? []
         unreadCount = (try? feedRepo.fetchUnreadCount()) ?? 0
@@ -42,6 +41,7 @@ final class FeedViewModel: ObservableObject {
     }
 
     func markAllRead() {
+        guard let feedRepo = feedRepo else { return }
         try? feedRepo.markAllRead()
         unreadCount = 0
         load()

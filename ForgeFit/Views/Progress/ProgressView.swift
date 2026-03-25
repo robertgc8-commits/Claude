@@ -4,14 +4,7 @@ import SwiftData
 struct ProgressView: View {
     @EnvironmentObject private var appState: AppState
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var vm: ProgressViewModel
-
-    init() {
-        _vm = StateObject(wrappedValue: ProgressViewModel(
-            context: ModelContext(try! ModelContainer(for: Workout.self)),
-            userId: ""
-        ))
-    }
+    @StateObject private var vm = ProgressViewModel()
 
     var body: some View {
         NavigationStack {
