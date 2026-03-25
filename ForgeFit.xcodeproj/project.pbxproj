@@ -30,6 +30,7 @@
 	94D5EA41A603D19E8C0AF34E /* ExerciseTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3593F19C9236DBE698645A4E /* ExerciseTemplate.swift */; };
 	52FA1AAA3E81733E8712196D /* PersonalRecord.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04D9EA501B7C3DDDB92A6647 /* PersonalRecord.swift */; };
 	1745FBCB601116D0C52D5397 /* Social.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5913CE24D11FF532557CF7D0 /* Social.swift */; };
+	A1B2C3D4E5F60001C9D0E1F2 /* BodyWeight.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2C3D4E5F60002C9D0E1F2A3 /* BodyWeight.swift */; };
 	D59965FC7B62CD6B0D100DAB /* Streak.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A1C8BCEA0A6BFF7AC588C5 /* Streak.swift */; };
 	2339E10EBECBFF00F8292D30 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6715C8DA61BE5A9C01C442A6 /* User.swift */; };
 	D2A665071235149E198E796A /* Workout.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04C0944B12005E8E8CAAD896 /* Workout.swift */; };
@@ -106,6 +107,7 @@
 	3593F19C9236DBE698645A4E /* ExerciseTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseTemplate.swift; sourceTree = "<group>"; };
 	04D9EA501B7C3DDDB92A6647 /* PersonalRecord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecord.swift; sourceTree = "<group>"; };
 	5913CE24D11FF532557CF7D0 /* Social.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Social.swift; sourceTree = "<group>"; };
+	B2C3D4E5F60002C9D0E1F2A3 /* BodyWeight.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyWeight.swift; sourceTree = "<group>"; };
 	88A1C8BCEA0A6BFF7AC588C5 /* Streak.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Streak.swift; sourceTree = "<group>"; };
 	6715C8DA61BE5A9C01C442A6 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
 	04C0944B12005E8E8CAAD896 /* Workout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Workout.swift; sourceTree = "<group>"; };
@@ -299,6 +301,7 @@
 			3593F19C9236DBE698645A4E /* ExerciseTemplate.swift */,
 			04D9EA501B7C3DDDB92A6647 /* PersonalRecord.swift */,
 			5913CE24D11FF532557CF7D0 /* Social.swift */,
+			B2C3D4E5F60002C9D0E1F2A3 /* BodyWeight.swift */,
 			88A1C8BCEA0A6BFF7AC588C5 /* Streak.swift */,
 			6715C8DA61BE5A9C01C442A6 /* User.swift */,
 			04C0944B12005E8E8CAAD896 /* Workout.swift */,
@@ -560,6 +563,7 @@
 			94D5EA41A603D19E8C0AF34E /* ExerciseTemplate.swift in Sources */,
 			52FA1AAA3E81733E8712196D /* PersonalRecord.swift in Sources */,
 			1745FBCB601116D0C52D5397 /* Social.swift in Sources */,
+			A1B2C3D4E5F60001C9D0E1F2 /* BodyWeight.swift in Sources */,
 			D59965FC7B62CD6B0D100DAB /* Streak.swift in Sources */,
 			2339E10EBECBFF00F8292D30 /* User.swift in Sources */,
 			D2A665071235149E198E796A /* Workout.swift in Sources */,
