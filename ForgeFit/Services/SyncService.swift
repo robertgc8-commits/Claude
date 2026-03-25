@@ -9,6 +9,8 @@ protocol SyncServiceProtocol {
     func syncFeed(userId: String) async throws
     func pushWorkout(_ workout: Workout, userId: String) async throws
     func pushFeedItem(_ item: FeedItem, userId: String) async throws
+    /// Sends a backend account-deletion request. Local data is wiped by the caller.
+    func deleteAccount(userId: String) async throws
 }
 
 final class MockSyncService: SyncServiceProtocol {
@@ -27,6 +29,9 @@ final class MockSyncService: SyncServiceProtocol {
     func pushFeedItem(_ item: FeedItem, userId: String) async throws {
         try await Task.sleep(nanoseconds: 100_000_000)
     }
+    func deleteAccount(userId: String) async throws {
+        try await Task.sleep(nanoseconds: 300_000_000)
+    }
 }
 
 /// Real implementation stub (wire up Firebase here)
@@ -37,4 +42,5 @@ final class FirestoreSyncService: SyncServiceProtocol {
     func syncFeed(userId: String) async throws { /* Firestore query feed collection */ }
     func pushWorkout(_ workout: Workout, userId: String) async throws { /* Firestore write */ }
     func pushFeedItem(_ item: FeedItem, userId: String) async throws { /* Firestore write */ }
+    func deleteAccount(userId: String) async throws { /* DELETE /users/{userId} on backend */ }
 }

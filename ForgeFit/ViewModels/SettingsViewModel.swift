@@ -46,9 +46,11 @@ final class SettingsViewModel: ObservableObject {
         let ns = NotificationService.shared
 
         if s.receiveStreakReminders {
+            let doneThisWeek = (try? workoutRepo?.fetchWorkoutsThisWeek(userId: userId))?.count ?? 0
+            let remaining = max(0, s.weeklyWorkoutTarget - doneThisWeek)
             ns.scheduleStreakReminder(
                 hour: s.streakReminderHour,
-                remaining: 1,
+                remaining: remaining,
                 target: s.weeklyWorkoutTarget
             )
         } else {
@@ -56,7 +58,13 @@ final class SettingsViewModel: ObservableObject {
         }
 
         if s.receiveInactivityReminders {
-            ns.scheduleInactivityReminder(daysThreshold: s.inactivityThresholdDays)
+            let lastDate = (try? workoutRepo?.fetchCompletedWorkouts(userId: userId))?.first?.completedAt
+            if let last = lastDate {
+                ns.rescheduleInactivityReminder(from: last, thresholdDays: s.inactivityThresholdDays)
+            } else {
+                // No workout history — start the clock from now
+                ns.rescheduleInactivityReminder(from: Date(), thresholdDays: s.inactivityThresholdDays)
+            }
         } else {
             ns.cancelInactivityReminder()
         }
@@ -183,9 +191,14 @@ final class SettingsViewModel: ObservableObject {
 
         try? context.save()
 
-        // Stub: real backend deletion would be handled by SyncService
+        // Cancel all scheduled notifications for this user
+        NotificationService.shared.cancelStreakReminder()
+        NotificationService.shared.cancelInactivityReminder()
+        NotificationService.shared.cancelWeeklyReport()
+
+        // Backend deletion: swap MockSyncService for FirestoreSyncService in production
         Task {
-            await MockSyncService().deleteAccount(userId: userId)
+            try? await MockSyncService().deleteAccount(userId: userId)
         }
 
         appState.signOut()

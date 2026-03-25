@@ -168,7 +168,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
         set.isCompleted = true
         set.loggedAt = Date()
         checkForPRs(set: set, exercise: exercise)
-        startRestTimer(seconds: 90)
+        startRestTimer(seconds: settings?.restTimerDuration ?? 90)
         objectWillChange.send()
     }
 
@@ -232,7 +232,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
             exerciseName: exercise.exerciseName,
             lastSessionSets: lastSession?.sets ?? [],
             currentSessionSetCount: (exercise.sets ?? []).count,
-            weightUnit: settings.preferredWeightUnit
+            weightUnit: settings.preferredWeightUnit,
+            increment: settings.defaultWeightIncrement
         )
         suggestions[exercise.exerciseName] = suggestion
     }
@@ -363,6 +364,15 @@ final class ActiveWorkoutViewModel: ObservableObject {
         restTimerRemaining = nil
         workout.complete()
         try? context.save()
+
+        // Reset inactivity countdown from this workout's completion time
+        if let s = settings, s.receiveInactivityReminders {
+            NotificationService.shared.rescheduleInactivityReminder(
+                from: workout.completedAt ?? Date(),
+                thresholdDays: s.inactivityThresholdDays
+            )
+        }
+
         isFinished = true
     }
 

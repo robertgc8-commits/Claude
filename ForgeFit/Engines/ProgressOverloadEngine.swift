@@ -89,11 +89,13 @@ final class ProgressOverloadEngine {
     }
 
     /// Suggests targets for the next set based on last session performance.
+    /// `increment`: weight step per overload cycle. Falls back to the unit default (2.5 kg / 5 lb) when 0.
     static func suggest(
         exerciseName: String,
         lastSessionSets: [ExerciseSet],
         currentSessionSetCount: Int,
-        weightUnit: WeightUnit
+        weightUnit: WeightUnit,
+        increment: Double = 0
     ) -> OverloadSuggestion? {
         guard !lastSessionSets.isEmpty else { return nil }
 
@@ -103,7 +105,7 @@ final class ProgressOverloadEngine {
         // Use the working set with the most volume from last session
         let bestSet = completed.filter { !$0.isWarmup }.max(by: { $0.volume < $1.volume }) ?? completed[0]
         let targetReps = 8  // standard rep target for progressive overload
-        let weightIncrement = weightUnit == .kg ? 2.5 : 5.0
+        let weightIncrement = increment > 0 ? increment : (weightUnit == .kg ? 2.5 : 5.0)
 
         if bestSet.reps >= targetReps {
             // Ready to increase weight
