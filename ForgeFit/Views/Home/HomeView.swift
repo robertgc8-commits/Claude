@@ -97,7 +97,10 @@ struct HomeView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear { vm.loadDashboard() }
+        .onAppear {
+            vm.configure(context: modelContext, userId: appState.currentUserId)
+            vm.loadDashboard()
+        }
     }
 
     private var greetingHeader: some View {

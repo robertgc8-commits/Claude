@@ -42,7 +42,10 @@ struct WorkoutHistoryView: View {
             .searchable(text: $vm.searchText, prompt: "Search workouts")
         }
         .preferredColorScheme(.dark)
-        .onAppear { vm.load() }
+        .onAppear {
+            vm.configure(context: modelContext, userId: appState.currentUserId)
+            vm.load()
+        }
     }
 
     private var workoutList: some View {

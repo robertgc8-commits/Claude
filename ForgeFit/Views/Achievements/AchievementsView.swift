@@ -36,7 +36,10 @@ struct AchievementsView: View {
             .navigationBarTitleDisplayMode(.large)
         }
         .preferredColorScheme(.dark)
-        .onAppear { vm.load() }
+        .onAppear {
+            vm.configure(context: modelContext, userId: appState.currentUserId)
+            vm.load()
+        }
         .sheet(item: $selectedAchievement) { definition in
             AchievementDetailSheet(definition: definition, vm: vm)
         }

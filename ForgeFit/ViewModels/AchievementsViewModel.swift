@@ -7,10 +7,15 @@ final class AchievementsViewModel: ObservableObject {
     @Published var selectedCategory: AchievementCategory? = nil
     @Published var isLoading = false
 
-    private let context: ModelContext
-    private let userId: String
+    private var context: ModelContext
+    private var userId: String
 
     init(context: ModelContext, userId: String) {
+        self.context = context
+        self.userId = userId
+    }
+
+    func configure(context: ModelContext, userId: String) {
         self.context = context
         self.userId = userId
     }

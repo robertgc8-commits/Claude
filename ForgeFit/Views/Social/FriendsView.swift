@@ -44,7 +44,10 @@ struct FriendsView: View {
         .sheet(isPresented: $showingSearch) {
             FriendSearchView(vm: vm)
         }
-        .onAppear { vm.load() }
+        .onAppear {
+            vm.configure(context: modelContext, userId: appState.currentUserId)
+            vm.load()
+        }
     }
 
     private var pendingSection: some View {

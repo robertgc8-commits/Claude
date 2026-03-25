@@ -8,10 +8,15 @@ final class WorkoutHistoryViewModel: ObservableObject {
     @Published var searchText = ""
     @Published var filterMuscleGroup: MuscleGroup? = nil
 
-    private let workoutRepo: WorkoutRepository
-    private let userId: String
+    private var workoutRepo: WorkoutRepository
+    private var userId: String
 
     init(context: ModelContext, userId: String) {
+        self.workoutRepo = WorkoutRepository(context: context)
+        self.userId = userId
+    }
+
+    func configure(context: ModelContext, userId: String) {
         self.workoutRepo = WorkoutRepository(context: context)
         self.userId = userId
     }

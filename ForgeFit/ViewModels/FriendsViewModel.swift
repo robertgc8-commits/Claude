@@ -11,11 +11,17 @@ final class FriendsViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private let friendRepo: FriendRepository
-    private let context: ModelContext
-    private let userId: String
+    private var friendRepo: FriendRepository
+    private var context: ModelContext
+    private var userId: String
 
     init(context: ModelContext, userId: String) {
+        self.context = context
+        self.userId = userId
+        self.friendRepo = FriendRepository(context: context)
+    }
+
+    func configure(context: ModelContext, userId: String) {
         self.context = context
         self.userId = userId
         self.friendRepo = FriendRepository(context: context)

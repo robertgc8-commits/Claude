@@ -7,11 +7,16 @@ final class SettingsViewModel: ObservableObject {
     @Published var settings: UserSettings?
     @Published var isSaving = false
 
-    private let userRepo: UserRepository
+    private var userRepo: UserRepository
     private let notificationService = NotificationService.shared
-    private let userId: String
+    private var userId: String
 
     init(context: ModelContext, userId: String) {
+        self.userRepo = UserRepository(context: context)
+        self.userId = userId
+    }
+
+    func configure(context: ModelContext, userId: String) {
         self.userRepo = UserRepository(context: context)
         self.userId = userId
     }

@@ -22,6 +22,7 @@ struct FeedView: View {
             }
         }
         .onAppear {
+            vm.configure(context: modelContext, userId: appState.currentUserId)
             vm.load()
             vm.markAllRead()
         }

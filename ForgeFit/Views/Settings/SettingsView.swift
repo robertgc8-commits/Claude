@@ -155,6 +155,9 @@ struct SettingsView: View {
             }
         }
         .preferredColorScheme(.dark)
-        .onAppear { vm.load() }
+        .onAppear {
+            vm.configure(context: modelContext, userId: appState.currentUserId)
+            vm.load()
+        }
     }
 }

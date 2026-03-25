@@ -53,6 +53,12 @@ final class AppState: ObservableObject {
         UserDefaults.standard.set(true, forKey: "hasCompletedOnboarding")
     }
 
+    func skipToApp() {
+        let guestId = "guest_\(UUID().uuidString.prefix(8))"
+        signIn(userId: guestId)
+        completeOnboarding()
+    }
+
     func signOut() {
         currentUserId = ""
         isAuthenticated = false

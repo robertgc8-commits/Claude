@@ -30,6 +30,7 @@ struct OnboardingView: View {
 // MARK: - Welcome Step
 private struct WelcomeStep: View {
     @ObservedObject var vm: OnboardingViewModel
+    @EnvironmentObject var appState: AppState
 
     var body: some View {
         VStack(spacing: 40) {
@@ -50,8 +51,15 @@ private struct WelcomeStep: View {
                     .lineSpacing(4)
             }
             Spacer()
-            FFButton(title: "Get Started", style: .primary) {
-                vm.advance()
+            VStack(spacing: 12) {
+                FFButton(title: "Get Started", style: .primary) {
+                    vm.advance()
+                }
+                Button("Skip for now") {
+                    appState.skipToApp()
+                }
+                .font(.system(size: 15))
+                .foregroundStyle(Color.ffSubtext)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 40)

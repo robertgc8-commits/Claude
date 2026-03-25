@@ -15,12 +15,19 @@ final class HomeViewModel: ObservableObject {
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
 
-    private let workoutRepo: WorkoutRepository
-    private let prRepo: PRRepository
-    private let userRepo: UserRepository
-    private let userId: String
+    private var workoutRepo: WorkoutRepository
+    private var prRepo: PRRepository
+    private var userRepo: UserRepository
+    private var userId: String
 
     init(context: ModelContext, userId: String) {
+        self.workoutRepo = WorkoutRepository(context: context)
+        self.prRepo = PRRepository(context: context)
+        self.userRepo = UserRepository(context: context)
+        self.userId = userId
+    }
+
+    func configure(context: ModelContext, userId: String) {
         self.workoutRepo = WorkoutRepository(context: context)
         self.prRepo = PRRepository(context: context)
         self.userRepo = UserRepository(context: context)
