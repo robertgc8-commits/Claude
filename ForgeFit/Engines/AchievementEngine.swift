@@ -64,11 +64,11 @@ final class AchievementEngine {
         case .workoutStreak(let weeks):
             return context.currentStreak >= weeks
 
-        case .earlyBirdWorkouts(let count):
+        case .earlyBirdWorkouts(_):
             // This requires additional context; skipped in basic eval
             return false
 
-        case .lateNightWorkouts(let count):
+        case .lateNightWorkouts(_):
             return false
         }
     }

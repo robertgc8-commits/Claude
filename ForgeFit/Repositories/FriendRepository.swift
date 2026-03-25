@@ -20,19 +20,21 @@ final class FriendRepository {
     }
 
     func fetchAcceptedFriends(userId: String) throws -> [FriendRelationship] {
+        let accepted = FriendStatus.accepted
         let descriptor = FetchDescriptor<FriendRelationship>(
             predicate: #Predicate { r in
                 (r.requesterId == userId || r.receiverId == userId) &&
-                r.status == "accepted"
+                r.status == accepted
             }
         )
         return try context.fetch(descriptor)
     }
 
     func fetchPendingRequests(userId: String) throws -> [FriendRelationship] {
+        let pending = FriendStatus.pending
         let descriptor = FetchDescriptor<FriendRelationship>(
             predicate: #Predicate { r in
-                r.receiverId == userId && r.status == "pending"
+                r.receiverId == userId && r.status == pending
             }
         )
         return try context.fetch(descriptor)

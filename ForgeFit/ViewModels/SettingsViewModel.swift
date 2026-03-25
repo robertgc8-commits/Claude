@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import UserNotifications
 
 @MainActor
 final class SettingsViewModel: ObservableObject {
@@ -50,5 +51,3 @@ final class SettingsViewModel: ObservableObject {
         }
     }
 }
-
-import UserNotifications
