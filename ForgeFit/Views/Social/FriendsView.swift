@@ -10,17 +10,8 @@ struct FriendsView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                // Pending requests
-                if !vm.pendingRequests.isEmpty {
-                    pendingSection
-                }
-
-                // Friends list
-                if vm.friends.isEmpty {
-                    emptyFriends
-                } else {
-                    friendsList
-                }
+                if !vm.pendingRequests.isEmpty { pendingSection }
+                if vm.friends.isEmpty { emptyFriends } else { friendsList }
             }
             .padding(.vertical, 12)
         }
@@ -29,8 +20,7 @@ struct FriendsView: View {
                 Button {
                     showingSearch = true
                 } label: {
-                    Image(systemName: "person.badge.plus")
-                        .foregroundStyle(Color.ffAccent)
+                    Image(systemName: "person.badge.plus").foregroundStyle(Color.ffAccent)
                 }
             }
         }
@@ -43,12 +33,11 @@ struct FriendsView: View {
         }
     }
 
+    // MARK: - Pending
+
     private var pendingSection: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("Friend Requests")
-                .ffSectionHeader()
-                .padding(.horizontal, 16)
-
+            Text("Friend Requests").ffSectionHeader().padding(.horizontal, 16)
             ForEach(vm.pendingRequests) { request in
                 HStack(spacing: 12) {
                     avatarCircle(request.friendDisplayName)
@@ -60,29 +49,32 @@ struct FriendsView: View {
                     }
                     Spacer()
                     Button("Accept") { vm.acceptRequest(request) }
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(.white)
+                        .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
                         .padding(.horizontal, 12).padding(.vertical, 6)
                         .background(Color.ffAccent).clipShape(Capsule())
                     Button("Decline") { vm.declineRequest(request) }
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.ffSubtext)
+                        .font(.system(size: 13)).foregroundStyle(Color.ffSubtext)
                 }
-                .padding(.horizontal, 16)
-                .padding(.vertical, 8)
+                .padding(.horizontal, 16).padding(.vertical, 8)
             }
         }
     }
 
+    // MARK: - Friends List
+
     private var friendsList: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("Friends (\(vm.friends.count))")
-                .ffSectionHeader()
-                .padding(.horizontal, 16)
-                .padding(.bottom, 10)
-
+                .ffSectionHeader().padding(.horizontal, 16).padding(.bottom, 10)
             ForEach(vm.friends) { friend in
-                NavigationLink(destination: FriendProfileView(friend: friend)) {
+                NavigationLink {
+                    FriendProfileView(
+                        friend: friend,
+                        onRemove: { vm.removeFriend(friend) }
+                    )
+                    .onAppear { vm.loadProfile(for: friend) }
+                    .environmentObject(vm)
+                } label: {
                     HStack(spacing: 12) {
                         avatarCircle(friend.friendDisplayName)
                         VStack(alignment: .leading, spacing: 2) {
@@ -93,11 +85,9 @@ struct FriendsView: View {
                         }
                         Spacer()
                         Image(systemName: "chevron.right")
-                            .font(.system(size: 12))
-                            .foregroundStyle(Color.ffBorder)
+                            .font(.system(size: 12)).foregroundStyle(Color.ffBorder)
                     }
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, 16).padding(.vertical, 10)
                 }
                 .buttonStyle(.plain)
                 Divider().background(Color.ffBorder).padding(.horizontal, 16)
@@ -107,80 +97,48 @@ struct FriendsView: View {
 
     private var emptyFriends: some View {
         VStack(spacing: 12) {
-            Image(systemName: "person.2")
-                .font(.system(size: 44)).foregroundStyle(Color.ffBorder)
-            Text("No friends yet")
-                .font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.ffSubtext)
-            Button {
-                showingSearch = true
-            } label: {
-                Text("Find Friends")
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundStyle(Color.ffAccent)
+            Image(systemName: "person.2").font(.system(size: 44)).foregroundStyle(Color.ffBorder)
+            Text("No friends yet").font(.system(size: 16, weight: .semibold)).foregroundStyle(Color.ffSubtext)
+            Button { showingSearch = true } label: {
+                Text("Find Friends").font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.ffAccent)
             }
         }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 48)
+        .frame(maxWidth: .infinity).padding(.vertical, 48)
     }
 
     private func avatarCircle(_ name: String) -> some View {
-        Circle()
-            .fill(Color.ffSurface2)
-            .frame(width: 44, height: 44)
+        Circle().fill(Color.ffSurface2).frame(width: 44, height: 44)
             .overlay {
                 Text(name.prefix(1).uppercased())
-                    .font(.system(size: 16, weight: .bold))
-                    .foregroundStyle(Color.ffAccent)
+                    .font(.system(size: 16, weight: .bold)).foregroundStyle(Color.ffAccent)
             }
     }
 }
 
 // MARK: - Friend Search
+
 struct FriendSearchView: View {
     @ObservedObject var vm: FriendsViewModel
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         NavigationStack {
-            VStack {
+            Group {
                 if vm.isSearching {
-                    ProgressView().tint(Color.ffAccent).padding(.top, 40)
+                    ProgressView().tint(Color.ffAccent).frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else if !vm.searchResults.isEmpty {
                     List(vm.searchResults) { result in
-                        HStack {
-                            Circle().fill(Color.ffSurface2).frame(width: 40, height: 40)
-                                .overlay {
-                                    Text(result.displayName.prefix(1).uppercased())
-                                        .font(.system(size: 14, weight: .bold))
-                                        .foregroundStyle(Color.ffAccent)
-                                }
-                            VStack(alignment: .leading, spacing: 2) {
-                                Text(result.displayName)
-                                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.ffText)
-                                Text("@" + result.username)
-                                    .font(.system(size: 12)).foregroundStyle(Color.ffSubtext)
-                            }
-                            Spacer()
-                            Button("Add") { vm.sendRequest(to: result) }
-                                .font(.system(size: 13, weight: .semibold))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 12).padding(.vertical, 6)
-                                .background(Color.ffAccent).clipShape(Capsule())
-                        }
-                        .listRowBackground(Color.ffSurface)
+                        searchRow(result)
+                            .listRowBackground(Color.ffSurface)
                     }
-                    .listStyle(.plain)
-                    .scrollContentBackground(.hidden)
+                    .listStyle(.plain).scrollContentBackground(.hidden)
                 } else if !vm.searchText.isEmpty {
-                    Text("No users found")
-                        .foregroundStyle(Color.ffSubtext)
-                        .padding(.top, 40)
+                    Text("No users found").foregroundStyle(Color.ffSubtext)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    Text("Search by username")
-                        .foregroundStyle(Color.ffSubtext)
-                        .padding(.top, 40)
+                    Text("Search by username").foregroundStyle(Color.ffSubtext)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
-                Spacer()
             }
             .background(Color.ffBackground)
             .navigationTitle("Find Friends")
@@ -195,56 +153,105 @@ struct FriendSearchView: View {
         }
         .preferredColorScheme(.dark)
     }
+
+    @ViewBuilder
+    private func searchRow(_ result: UserSearchResult) -> some View {
+        HStack {
+            Circle().fill(Color.ffSurface2).frame(width: 40, height: 40)
+                .overlay {
+                    Text(result.displayName.prefix(1).uppercased())
+                        .font(.system(size: 14, weight: .bold)).foregroundStyle(Color.ffAccent)
+                }
+            VStack(alignment: .leading, spacing: 2) {
+                Text(result.displayName)
+                    .font(.system(size: 14, weight: .semibold)).foregroundStyle(Color.ffText)
+                Text("@" + result.username)
+                    .font(.system(size: 12)).foregroundStyle(Color.ffSubtext)
+            }
+            Spacer()
+            if result.isAlreadyFriend {
+                Text("Friends")
+                    .font(.system(size: 12)).foregroundStyle(Color.ffGreen)
+            } else if result.hasPendingRequest {
+                Text("Pending")
+                    .font(.system(size: 12)).foregroundStyle(Color.ffSubtext)
+            } else {
+                Button("Add") { vm.sendRequest(to: result) }
+                    .font(.system(size: 13, weight: .semibold)).foregroundStyle(.white)
+                    .padding(.horizontal, 12).padding(.vertical, 6)
+                    .background(Color.ffAccent).clipShape(Capsule())
+            }
+        }
+    }
 }
 
 // MARK: - Friend Profile
+
 struct FriendProfileView: View {
     let friend: FriendRelationship
+    let onRemove: () -> Void
+    @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var vm: FriendsViewModel
 
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
-                // Avatar and name
-                VStack(spacing: 10) {
-                    Circle()
-                        .fill(Color.ffSurface2)
-                        .frame(width: 80, height: 80)
-                        .overlay {
-                            Text(friend.friendDisplayName.prefix(1).uppercased())
-                                .font(.system(size: 32, weight: .bold))
-                                .foregroundStyle(Color.ffAccent)
-                        }
+                // Avatar
+                Circle().fill(Color.ffSurface2).frame(width: 80, height: 80)
+                    .overlay {
+                        Text(friend.friendDisplayName.prefix(1).uppercased())
+                            .font(.system(size: 32, weight: .bold)).foregroundStyle(Color.ffAccent)
+                    }
+                VStack(spacing: 4) {
                     Text(friend.friendDisplayName)
                         .font(.system(size: 22, weight: .bold)).foregroundStyle(Color.ffText)
                     Text("@" + friend.friendUsername)
                         .font(.system(size: 14)).foregroundStyle(Color.ffSubtext)
                 }
-                .padding(.top, 16)
 
-                // Shared activity visible to this user
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Visible Activity")
-                        .ffSectionHeader()
-                        .padding(.horizontal, 16)
-                    Text("This user controls what you can see")
-                        .font(.system(size: 13))
-                        .foregroundStyle(Color.ffSubtext)
-                        .padding(.horizontal, 16)
+                // Privacy-filtered stats
+                if vm.isLoadingProfile {
+                    ProgressView().tint(Color.ffAccent).padding(.top, 8)
+                } else if let profile = vm.selectedProfile {
+                    profileStats(profile)
                 }
 
-                // Remove friend
-                Button("Remove Friend") {
-                    vm.removeFriend(friend)
-                }
-                .font(.system(size: 14))
-                .foregroundStyle(Color.ffRed)
-                .padding(.top, 16)
+                // Remove
+                Button("Remove Friend") { onRemove(); dismiss() }
+                    .font(.system(size: 14)).foregroundStyle(Color.ffRed).padding(.top, 8)
             }
+            .padding(.top, 24).padding(.horizontal, 16)
         }
         .background(Color.ffBackground)
         .navigationTitle(friend.friendDisplayName)
         .navigationBarTitleDisplayMode(.inline)
         .preferredColorScheme(.dark)
+    }
+
+    private func profileStats(_ profile: PublicProfile) -> some View {
+        LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+            if let v = profile.weeklyWorkouts {
+                profileStat("\(v)", label: "This Week")
+            }
+            if let v = profile.currentStreak {
+                profileStat("\(v)w", label: "Streak")
+            }
+            if let v = profile.totalWorkouts {
+                profileStat("\(v)", label: "Total Workouts")
+            }
+            if let v = profile.recentPRLabel {
+                profileStat(v, label: "Recent PR")
+            }
+        }
+    }
+
+    private func profileStat(_ value: String, label: String) -> some View {
+        VStack(spacing: 4) {
+            Text(value)
+                .font(.system(size: 18, weight: .bold, design: .rounded))
+                .foregroundStyle(Color.ffText).lineLimit(1).minimumScaleFactor(0.7)
+            Text(label).font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
+        }
+        .frame(maxWidth: .infinity).padding(.vertical, 12).ffCard()
     }
 }

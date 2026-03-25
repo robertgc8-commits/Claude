@@ -3,15 +3,7 @@ import Foundation
 /// Static mock data used for previews and development.
 enum MockData {
 
-    // MARK: - Friend Search
-
-    static let friendSearchResults: [MockFriendSearchResult] = [
-        MockFriendSearchResult(id: "u002", username: "alexfit", displayName: "Alex Chen", workoutCount: 87),
-        MockFriendSearchResult(id: "u003", username: "sarahruns", displayName: "Sarah Miller", workoutCount: 124),
-        MockFriendSearchResult(id: "u004", username: "mike_lifts", displayName: "Mike Torres", workoutCount: 42),
-        MockFriendSearchResult(id: "u005", username: "kettlebell_queen", displayName: "Jordan Lee", workoutCount: 201),
-        MockFriendSearchResult(id: "u006", username: "benchpressking", displayName: "Chris Park", workoutCount: 63),
-    ]
+    // MARK: - Friend Search (canonical list lives in MockSocialData inside SocialService.swift)
 
     // MARK: - Feed Items (mock)
 

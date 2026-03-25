@@ -25,13 +25,18 @@ final class ActiveWorkoutViewModel: ObservableObject {
     private var workoutTimer: Timer?
     private var allWorkouts: [Workout] = []
     private var settings: UserSettings?
+    private var userDisplayName: String = ""
+    private var userUsername: String = ""
+    private let socialService: SocialServiceProtocol
 
-    init(context: ModelContext, userId: String, workout: Workout) {
+    init(context: ModelContext, userId: String, workout: Workout,
+         socialService: SocialServiceProtocol = SocialServiceProvider.shared) {
         self.context = context
         self.userId = userId
         self.workout = workout
         self.workoutRepo = WorkoutRepository(context: context)
         self.prRepo = PRRepository(context: context)
+        self.socialService = socialService
         self.exercises = (workout.exercises ?? []).sorted { $0.order < $1.order }
         startWorkoutTimer()
         loadHistory()
@@ -211,7 +216,40 @@ final class ActiveWorkoutViewModel: ObservableObject {
                 achievedAt: Date()
             )
             newPRs.append(contentsOf: prs)
+
+            if settings?.notifyFriendsOnPR == true {
+                postPREvent(exercise: exercise, set: set)
+            }
         }
+    }
+
+    private func postPREvent(exercise: WorkoutExercise, set: ExerciseSet) {
+        let friendIds = (try? FriendRepository(context: context)
+            .fetchAcceptedFriends(userId: userId)
+            .map { $0.friendUserId }) ?? []
+        guard !friendIds.isEmpty else { return }
+
+        let name = userDisplayName.isEmpty ? "Someone" : userDisplayName
+        let weightStr = String(format: "%.1f", set.weight)
+        let prBody = "\(name) hit a new \(exercise.exerciseName) PR: \(weightStr)kg × \(set.reps)"
+        let event = SocialNotificationEvent(
+            actorUserId: userId,
+            actorUsername: userUsername,
+            actorDisplayName: name,
+            type: .prAchieved,
+            title: "New PR",
+            body: prBody,
+            targetUserIds: friendIds,
+            metadata: ["exercise": exercise.exerciseName, "weight": weightStr, "reps": "\(set.reps)"]
+        )
+        let feedRepo = FeedRepository(context: context)
+        let _ = feedRepo.createFeedItem(
+            actorUserId: userId, actorUsername: userUsername, actorDisplayName: name,
+            type: .prAchieved, title: "New PR",
+            body: "You hit a new \(exercise.exerciseName) PR: \(weightStr)kg × \(set.reps)", isMine: true
+        )
+        try? context.save()
+        Task { try? await socialService.postSocialEvent(event) }
     }
 
     // MARK: - History + Suggestions
@@ -239,7 +277,12 @@ final class ActiveWorkoutViewModel: ObservableObject {
     }
 
     func loadSettings() {
-        settings = try? UserRepository(context: context).fetchSettings(userId: userId)
+        let userRepo = UserRepository(context: context)
+        settings = try? userRepo.fetchSettings(userId: userId)
+        if let user = try? userRepo.fetchCurrentUser(userId: userId) {
+            userDisplayName = user.displayName
+            userUsername = user.username
+        }
     }
 
     // MARK: - Templates
@@ -373,7 +416,41 @@ final class ActiveWorkoutViewModel: ObservableObject {
             )
         }
 
+        // Post social event to friends' feeds if enabled
+        if settings?.notifyFriendsOnWorkout == true {
+            postWorkoutEvent()
+        }
+
         isFinished = true
+    }
+
+    private func postWorkoutEvent() {
+        let friendIds = (try? FriendRepository(context: context)
+            .fetchAcceptedFriends(userId: userId)
+            .map { $0.friendUserId }) ?? []
+        guard !friendIds.isEmpty else { return }
+
+        let name = userDisplayName.isEmpty ? "Someone" : userDisplayName
+        let event = SocialNotificationEvent(
+            actorUserId: userId,
+            actorUsername: userUsername,
+            actorDisplayName: name,
+            type: .workoutCompleted,
+            title: "Workout Completed",
+            body: "\(name) completed \(workout.title)",
+            targetUserIds: friendIds,
+            metadata: ["workoutId": workout.id, "title": workout.title]
+        )
+        // Local feed item (my own activity)
+        let feedRepo = FeedRepository(context: context)
+        let _ = feedRepo.createFeedItem(
+            actorUserId: userId, actorUsername: userUsername, actorDisplayName: name,
+            type: .workoutCompleted, title: "Workout Completed",
+            body: "You completed \(workout.title)", isMine: true
+        )
+        try? context.save()
+        // Backend fanout
+        Task { try? await socialService.postSocialEvent(event) }
     }
 
     func discardWorkout() {

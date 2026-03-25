@@ -6,10 +6,12 @@ struct SocialView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // Tab picker
+                // Segmented tab picker
                 Picker("", selection: $selectedTab) {
                     Text("Feed").tag(0)
                     Text("Friends").tag(1)
+                    Text("Board").tag(2)
+                    Text("Challenges").tag(3)
                 }
                 .pickerStyle(.segmented)
                 .padding(.horizontal, 16)
@@ -18,10 +20,11 @@ struct SocialView: View {
                 Divider().background(Color.ffBorder)
 
                 Group {
-                    if selectedTab == 0 {
-                        FeedView()
-                    } else {
-                        FriendsView()
+                    switch selectedTab {
+                    case 0: FeedView()
+                    case 1: FriendsView()
+                    case 2: LeaderboardView()
+                    default: ChallengesView()
                     }
                 }
             }
