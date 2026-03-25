@@ -26,13 +26,10 @@ struct ForgeFitApp: App {
         } catch {
             // Store is incompatible with current schema (e.g. after model changes during development).
             // Delete and recreate so the app can launch cleanly.
-            if let storeURL = config.url {
-                try? FileManager.default.removeItem(at: storeURL)
-                let shmURL = storeURL.deletingPathExtension().appendingPathExtension("sqlite-shm")
-                let walURL = storeURL.deletingPathExtension().appendingPathExtension("sqlite-wal")
-                try? FileManager.default.removeItem(at: shmURL)
-                try? FileManager.default.removeItem(at: walURL)
-            }
+            let storeURL = config.url
+            try? FileManager.default.removeItem(at: storeURL)
+            try? FileManager.default.removeItem(at: storeURL.deletingPathExtension().appendingPathExtension("sqlite-shm"))
+            try? FileManager.default.removeItem(at: storeURL.deletingPathExtension().appendingPathExtension("sqlite-wal"))
             do {
                 return try ModelContainer(for: schema, configurations: [config])
             } catch {
