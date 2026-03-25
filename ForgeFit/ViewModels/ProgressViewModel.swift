@@ -11,17 +11,28 @@ final class ProgressViewModel: ObservableObject {
     @Published var historicalSets: [ExerciseSet] = []
     @Published var isLoading = false
 
+    // Body weight
+    @Published var bodyWeightEntries: [BodyWeightEntry] = []
+    @Published var showingBodyWeightInput = false
+    @Published var bodyWeightInput: String = ""
+
+    // Muscle group frequency
+    @Published var muscleGroupFrequency: [(group: MuscleGroup, count: Int)] = []
+
     private var prRepo: PRRepository
     private var workoutRepo: WorkoutRepository
     private var userId: String
+    private var context: ModelContext
 
     init(context: ModelContext, userId: String) {
+        self.context = context
         self.prRepo = PRRepository(context: context)
         self.workoutRepo = WorkoutRepository(context: context)
         self.userId = userId
     }
 
     func configure(context: ModelContext, userId: String) {
+        self.context = context
         self.prRepo = PRRepository(context: context)
         self.workoutRepo = WorkoutRepository(context: context)
         self.userId = userId
@@ -34,13 +45,15 @@ final class ProgressViewModel: ObservableObject {
             personalRecords = try prRepo.fetchAllPRs(userId: userId)
             let workouts = try workoutRepo.fetchCompletedWorkouts(userId: userId)
 
-            // Build unique exercise list
             let names = Set(workouts.flatMap { $0.exercises ?? [] }.map { $0.exerciseName })
             exerciseNames = names.sorted()
 
             if let first = exerciseNames.first, selectedExercise == nil {
                 selectExercise(first, workouts: workouts)
             }
+
+            buildMuscleGroupFrequency(from: workouts)
+            loadBodyWeight()
         } catch {
             print("ProgressViewModel load error: \(error)")
         }
@@ -55,12 +68,9 @@ final class ProgressViewModel: ObservableObject {
     private func selectExercise(_ name: String, workouts: [Workout]) {
         selectedExercise = name
         volumeTrend = ProgressOverloadEngine.computeVolumeTrend(
-            exerciseName: name, historicalWorkouts: workouts
-        )
+            exerciseName: name, historicalWorkouts: workouts)
         lastSessionSummary = ProgressOverloadEngine.lastSessionSummary(
-            exerciseName: name, workouts: workouts
-        )
-        // Flatten all sets for this exercise across history
+            exerciseName: name, workouts: workouts)
         historicalSets = workouts
             .flatMap { $0.exercises ?? [] }
             .filter { $0.exerciseName == name }
@@ -70,5 +80,60 @@ final class ProgressViewModel: ObservableObject {
 
     var prsByExercise: [String: [PersonalRecord]] {
         Dictionary(grouping: personalRecords) { $0.exerciseName }
+    }
+
+    /// Estimated 1RM for a PR (Brzycki formula)
+    func estimated1RM(for pr: PersonalRecord) -> Double? {
+        guard pr.reps > 0 && pr.reps < 37 && pr.weight > 0 else { return nil }
+        if pr.reps == 1 { return pr.weight }
+        return pr.weight / (1.0278 - 0.0278 * Double(pr.reps))
+    }
+
+    // MARK: - Muscle Group Frequency
+
+    private func buildMuscleGroupFrequency(from workouts: [Workout]) {
+        var counts: [MuscleGroup: Int] = [:]
+        for workout in workouts {
+            let groups = Set((workout.exercises ?? []).map { $0.muscleGroup })
+            for group in groups { counts[group, default: 0] += 1 }
+        }
+        muscleGroupFrequency = counts
+            .map { (group: $0.key, count: $0.value) }
+            .sorted { $0.count > $1.count }
+    }
+
+    // MARK: - Body Weight
+
+    private func loadBodyWeight() {
+        let uid = userId
+        let descriptor = FetchDescriptor<BodyWeightEntry>(
+            predicate: #Predicate { $0.userId == uid },
+            sortBy: [SortDescriptor(\.loggedAt, order: .reverse)]
+        )
+        bodyWeightEntries = (try? context.fetch(descriptor)) ?? []
+    }
+
+    func logBodyWeight() {
+        guard let value = Double(bodyWeightInput.replacingOccurrences(of: ",", with: ".")),
+              value > 0 else { return }
+        let entry = BodyWeightEntry(userId: userId, weightKg: value)
+        context.insert(entry)
+        try? context.save()
+        bodyWeightInput = ""
+        showingBodyWeightInput = false
+        loadBodyWeight()
+    }
+
+    func deleteBodyWeightEntry(_ entry: BodyWeightEntry) {
+        context.delete(entry)
+        try? context.save()
+        loadBodyWeight()
+    }
+
+    var latestBodyWeight: BodyWeightEntry? { bodyWeightEntries.first }
+
+    var bodyWeightTrend: Double? {
+        guard bodyWeightEntries.count >= 2 else { return nil }
+        return bodyWeightEntries[0].weightKg - bodyWeightEntries[1].weightKg
     }
 }

@@ -19,8 +19,10 @@ final class HomeViewModel: ObservableObject {
     private var prRepo: PRRepository
     private var userRepo: UserRepository
     private var userId: String
+    private var context: ModelContext
 
     init(context: ModelContext, userId: String) {
+        self.context = context
         self.workoutRepo = WorkoutRepository(context: context)
         self.prRepo = PRRepository(context: context)
         self.userRepo = UserRepository(context: context)
@@ -28,6 +30,7 @@ final class HomeViewModel: ObservableObject {
     }
 
     func configure(context: ModelContext, userId: String) {
+        self.context = context
         self.workoutRepo = WorkoutRepository(context: context)
         self.prRepo = PRRepository(context: context)
         self.userRepo = UserRepository(context: context)
@@ -65,7 +68,11 @@ final class HomeViewModel: ObservableObject {
     }
 
     private func fetchWeeklyRecords() throws -> [WeeklyStreakRecord] {
-        // Fetch from SwiftData — simplified descriptor
-        return []
+        let uid = userId
+        let descriptor = FetchDescriptor<WeeklyStreakRecord>(
+            predicate: #Predicate { $0.userId == uid },
+            sortBy: [SortDescriptor(\.weekStartDate)]
+        )
+        return try context.fetch(descriptor)
     }
 }

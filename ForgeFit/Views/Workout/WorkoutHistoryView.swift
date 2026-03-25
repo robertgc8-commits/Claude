@@ -18,11 +18,39 @@ struct WorkoutHistoryView: View {
 
     var body: some View {
         NavigationStack {
-            Group {
-                if vm.workouts.isEmpty && !vm.isLoading {
-                    emptyState
-                } else {
-                    workoutList
+            VStack(spacing: 0) {
+                // Muscle group filter chips
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 8) {
+                        filterChip("All", isSelected: vm.filterMuscleGroup == nil) {
+                            vm.filterMuscleGroup = nil
+                        }
+                        ForEach(MuscleGroup.allCases, id: \.self) { group in
+                            filterChip(group.rawValue, isSelected: vm.filterMuscleGroup == group) {
+                                vm.filterMuscleGroup = vm.filterMuscleGroup == group ? nil : group
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                }
+                .background(Color.ffBackground)
+
+                Divider().background(Color.ffBorder)
+
+                Group {
+                    if vm.workouts.isEmpty && !vm.isLoading {
+                        emptyState
+                    } else if vm.filtered.isEmpty {
+                        VStack(spacing: 12) {
+                            Spacer()
+                            Text("No \(vm.filterMuscleGroup?.rawValue ?? "") workouts found")
+                                .font(.system(size: 16)).foregroundStyle(Color.ffSubtext)
+                            Spacer()
+                        }
+                    } else {
+                        workoutList
+                    }
                 }
             }
             .background(Color.ffBackground)
@@ -46,6 +74,18 @@ struct WorkoutHistoryView: View {
             vm.configure(context: modelContext, userId: appState.currentUserId)
             vm.load()
         }
+    }
+
+    private func filterChip(_ label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(label)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(isSelected ? .white : Color.ffSubtext)
+                .padding(.horizontal, 12).padding(.vertical, 6)
+                .background(isSelected ? Color.ffAccent : Color.ffSurface)
+                .clipShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var workoutList: some View {

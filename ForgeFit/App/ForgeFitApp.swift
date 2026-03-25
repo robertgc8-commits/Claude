@@ -19,6 +19,7 @@ struct ForgeFitApp: App {
             FriendRelationship.self,
             FeedItem.self,
             UserSettings.self,
+            BodyWeightEntry.self,
         ])
         let config = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         do {

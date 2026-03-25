@@ -43,11 +43,21 @@ struct PRBadge: View {
     private var prDetail: String {
         switch pr.recordType {
         case .heaviestWeight:
-            return "\(String(format: "%.1f", pr.weight))kg"
+            if let e1rm = estimated1RM, pr.reps > 1 {
+                return "\(String(format: "%.1f", pr.weight))kg · ~\(String(format: "%.1f", e1rm))kg est. 1RM"
+            }
+            return "\(String(format: "%.1f", pr.weight))kg × \(pr.reps) reps"
         case .mostRepsAtWeight:
             return "\(pr.reps) reps @ \(String(format: "%.1f", pr.weight))kg"
         case .highestVolume, .highestSessionVolume:
             return "\(pr.value.volumeDisplay())kg volume"
         }
+    }
+
+    /// Brzycki 1RM estimate: weight / (1.0278 - 0.0278 × reps)
+    private var estimated1RM: Double? {
+        guard pr.reps > 0 && pr.reps < 37 && pr.weight > 0 else { return nil }
+        if pr.reps == 1 { return pr.weight }
+        return pr.weight / (1.0278 - 0.0278 * Double(pr.reps))
     }
 }

@@ -13,12 +13,16 @@ final class ActiveWorkoutViewModel: ObservableObject {
     @Published var lastSessionSummaries: [String: ProgressOverloadEngine.LastSessionSummary] = [:]
     @Published var suggestions: [String: ProgressOverloadEngine.OverloadSuggestion] = [:]
 
+    // Rest timer
+    @Published var restTimerRemaining: Int? = nil
+    @Published var restTimerTotal: Int = 90
+    private var restTimerTask: Task<Void, Never>?
+
     private let workoutRepo: WorkoutRepository
     private let prRepo: PRRepository
-    private let achievementEngine = AchievementEngine.self
     private let context: ModelContext
     private let userId: String
-    private var timer: Timer?
+    private var workoutTimer: Timer?
     private var allWorkouts: [Workout] = []
     private var settings: UserSettings?
 
@@ -29,17 +33,15 @@ final class ActiveWorkoutViewModel: ObservableObject {
         self.workoutRepo = WorkoutRepository(context: context)
         self.prRepo = PRRepository(context: context)
         self.exercises = (workout.exercises ?? []).sorted { $0.order < $1.order }
-        startTimer()
+        startWorkoutTimer()
         loadHistory()
     }
 
-    // MARK: - Timer
+    // MARK: - Workout Timer
 
-    private func startTimer() {
-        timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            Task { @MainActor [weak self] in
-                self?.elapsedSeconds += 1
-            }
+    private func startWorkoutTimer() {
+        workoutTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            Task { @MainActor [weak self] in self?.elapsedSeconds += 1 }
         }
     }
 
@@ -49,6 +51,33 @@ final class ActiveWorkoutViewModel: ObservableObject {
         let s = elapsedSeconds % 60
         if h > 0 { return String(format: "%d:%02d:%02d", h, m, s) }
         return String(format: "%d:%02d", m, s)
+    }
+
+    // MARK: - Rest Timer
+
+    func startRestTimer(seconds: Int = 90) {
+        restTimerTask?.cancel()
+        restTimerTotal = seconds
+        restTimerRemaining = seconds
+        restTimerTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            while let remaining = self.restTimerRemaining, remaining > 0 {
+                do { try await Task.sleep(nanoseconds: 1_000_000_000) } catch { return }
+                guard self.restTimerRemaining != nil else { return }
+                self.restTimerRemaining = (self.restTimerRemaining ?? 1) - 1
+                if self.restTimerRemaining == 0 {
+                    HapticFeedback.success()
+                    try? await Task.sleep(nanoseconds: 2_000_000_000)
+                    if self.restTimerRemaining == 0 { self.restTimerRemaining = nil }
+                }
+            }
+        }
+    }
+
+    func skipRestTimer() {
+        restTimerTask?.cancel()
+        restTimerTask = nil
+        restTimerRemaining = nil
     }
 
     // MARK: - Exercises
@@ -61,8 +90,10 @@ final class ActiveWorkoutViewModel: ObservableObject {
             muscleGroup: muscleGroup,
             order: exercises.count
         )
+        exercise.sets = []
         context.insert(exercise)
         exercises.append(exercise)
+
         if initialSets.isEmpty {
             addDefaultSet(to: exercise)
         } else {
@@ -73,22 +104,23 @@ final class ActiveWorkoutViewModel: ObservableObject {
                     reps: entry.reps,
                     weight: entry.weight
                 )
+                exercise.sets?.append(set)
                 context.insert(set)
             }
         }
+        try? context.save()
         loadSuggestion(for: exercise)
     }
 
     func removeExercise(_ exercise: WorkoutExercise) {
         exercises.removeAll { $0.id == exercise.id }
         context.delete(exercise)
+        try? context.save()
     }
 
     func reorderExercises(from source: IndexSet, to destination: Int) {
         exercises.move(fromOffsets: source, toOffset: destination)
-        for (i, exercise) in exercises.enumerated() {
-            exercise.order = i
-        }
+        for (i, exercise) in exercises.enumerated() { exercise.order = i }
     }
 
     // MARK: - Sets
@@ -96,37 +128,48 @@ final class ActiveWorkoutViewModel: ObservableObject {
     func addSet(to exercise: WorkoutExercise) {
         let existing = (exercise.sets ?? []).filter { !$0.isWarmup }
         let lastSet = existing.last
-        let setNumber = existing.count + 1
-
-        let newSet = ExerciseSet(
+        let set = ExerciseSet(
             workoutExerciseId: exercise.id,
-            setNumber: setNumber,
+            setNumber: existing.count + 1,
             reps: lastSet?.reps ?? 8,
             weight: lastSet?.weight ?? 0
         )
-        context.insert(newSet)
+        if exercise.sets == nil { exercise.sets = [] }
+        exercise.sets?.append(set)
+        context.insert(set)
+        try? context.save()
+        objectWillChange.send()
     }
 
     func addWarmupSet(to exercise: WorkoutExercise) {
         let warmups = (exercise.sets ?? []).filter { $0.isWarmup }
-        let newSet = ExerciseSet(
+        let set = ExerciseSet(
             workoutExerciseId: exercise.id,
             setNumber: warmups.count + 1,
             reps: 10,
             weight: 0,
             isWarmup: true
         )
-        context.insert(newSet)
+        if exercise.sets == nil { exercise.sets = [] }
+        exercise.sets?.append(set)
+        context.insert(set)
+        try? context.save()
+        objectWillChange.send()
     }
 
     func removeSet(_ set: ExerciseSet, from exercise: WorkoutExercise) {
+        exercise.sets?.removeAll { $0.id == set.id }
         context.delete(set)
+        try? context.save()
+        objectWillChange.send()
     }
 
     func completeSet(_ set: ExerciseSet, exercise: WorkoutExercise) {
         set.isCompleted = true
         set.loggedAt = Date()
         checkForPRs(set: set, exercise: exercise)
+        startRestTimer(seconds: 90)
+        objectWillChange.send()
     }
 
     private func addDefaultSet(to exercise: WorkoutExercise) {
@@ -137,6 +180,8 @@ final class ActiveWorkoutViewModel: ObservableObject {
             reps: suggestion?.suggestedReps ?? 8,
             weight: suggestion?.suggestedWeight ?? 0
         )
+        if exercise.sets == nil { exercise.sets = [] }
+        exercise.sets?.append(set)
         context.insert(set)
     }
 
@@ -144,13 +189,11 @@ final class ActiveWorkoutViewModel: ObservableObject {
 
     private func checkForPRs(set: ExerciseSet, exercise: WorkoutExercise) {
         guard set.weight > 0 && set.reps > 0 else { return }
-
         let historical = allWorkouts
             .filter { $0.id != workout.id }
             .flatMap { $0.exercises ?? [] }
             .filter { $0.exerciseName == exercise.exerciseName }
             .flatMap { $0.sets ?? [] }
-
         let existingPRs = (try? prRepo.fetchPRs(userId: userId, exerciseName: exercise.exerciseName)) ?? []
         let results = ProgressOverloadEngine.detectPRs(
             currentSet: set,
@@ -158,7 +201,6 @@ final class ActiveWorkoutViewModel: ObservableObject {
             historicalSets: historical,
             existingPRs: existingPRs
         )
-
         if !results.isEmpty {
             let prs = prRepo.processPRs(
                 results: results,
@@ -179,18 +221,16 @@ final class ActiveWorkoutViewModel: ObservableObject {
     }
 
     func loadSuggestion(for exercise: WorkoutExercise) {
-        guard let settings = settings else { return }
+        guard let settings else { return }
         let lastSession = ProgressOverloadEngine.lastSessionSummary(
             exerciseName: exercise.exerciseName,
             workouts: allWorkouts,
             excludingWorkoutId: workout.id
         )
         lastSessionSummaries[exercise.exerciseName] = lastSession
-
-        let lastSets = lastSession?.sets ?? []
         let suggestion = ProgressOverloadEngine.suggest(
             exerciseName: exercise.exerciseName,
-            lastSessionSets: lastSets,
+            lastSessionSets: lastSession?.sets ?? [],
             currentSessionSetCount: (exercise.sets ?? []).count,
             weightUnit: settings.preferredWeightUnit
         )
@@ -201,30 +241,23 @@ final class ActiveWorkoutViewModel: ObservableObject {
         settings = try? UserRepository(context: context).fetchSettings(userId: userId)
     }
 
-    // MARK: - Finish Workout
+    // MARK: - Finish / Discard
 
     func finishWorkout() {
-        timer?.invalidate()
+        workoutTimer?.invalidate()
+        restTimerTask?.cancel()
+        restTimerRemaining = nil
         workout.complete()
-
-        // Evaluate achievements
-        Task {
-            await evaluateAchievements()
-        }
-
-        try? workoutRepo.save()
+        try? context.save()
         isFinished = true
     }
 
     func discardWorkout() {
-        timer?.invalidate()
+        workoutTimer?.invalidate()
+        restTimerTask?.cancel()
+        restTimerRemaining = nil
         workoutRepo.deleteWorkout(workout)
         try? workoutRepo.save()
         isFinished = true
-    }
-
-    private func evaluateAchievements() async {
-        guard (try? workoutRepo.fetchCompletedWorkouts(userId: userId)) != nil else { return }
-        // Achievement evaluation is done in WorkoutCompletionViewModel after dismissal
     }
 }

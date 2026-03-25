@@ -10,6 +10,7 @@ struct ActiveWorkoutView: View {
     @State private var showingExercisePicker = false
     @State private var showingDiscardAlert = false
     @State private var showingFinishSummary = false
+    @State private var showingNotes = false
 
     var body: some View {
         NavigationStack {
@@ -32,10 +33,8 @@ struct ActiveWorkoutView: View {
     private func activeContent(vm: ActiveWorkoutViewModel) -> some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                // Header info
                 workoutHeader(vm: vm)
 
-                // Exercises
                 if vm.exercises.isEmpty {
                     emptyExerciseState
                 } else {
@@ -46,7 +45,6 @@ struct ActiveWorkoutView: View {
                     }
                 }
 
-                // Add exercise button
                 Button {
                     HapticFeedback.impact(.light)
                     showingExercisePicker = true
@@ -62,7 +60,7 @@ struct ActiveWorkoutView: View {
                 .buttonStyle(.plain)
                 .padding(.horizontal, 16)
                 .padding(.top, 8)
-                .padding(.bottom, 100)
+                .padding(.bottom, 120)
             }
         }
         .background(Color.ffBackground)
@@ -74,15 +72,37 @@ struct ActiveWorkoutView: View {
                     .foregroundStyle(Color.ffRed)
             }
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Finish") {
-                    HapticFeedback.success()
-                    vm.finishWorkout()
-                    showingFinishSummary = true
+                HStack(spacing: 16) {
+                    Button {
+                        showingNotes = true
+                    } label: {
+                        Image(systemName: vm.workout.notes?.isEmpty == false ? "note.text" : "note.text.badge.plus")
+                            .foregroundStyle(vm.workout.notes?.isEmpty == false ? Color.ffAccent : Color.ffSubtext)
+                    }
+                    Button("Finish") {
+                        HapticFeedback.success()
+                        vm.finishWorkout()
+                        showingFinishSummary = true
+                    }
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Color.ffGreen)
                 }
-                .font(.system(size: 16, weight: .bold))
-                .foregroundStyle(Color.ffGreen)
             }
         }
+        // Rest timer overlay
+        .overlay(alignment: .bottom) {
+            if let remaining = vm.restTimerRemaining {
+                RestTimerBanner(
+                    remaining: remaining,
+                    total: vm.restTimerTotal,
+                    onSkip: { vm.skipRestTimer() }
+                )
+                .transition(.move(edge: .bottom).combined(with: .opacity))
+                .padding(.horizontal, 16)
+                .padding(.bottom, 16)
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: vm.restTimerRemaining != nil)
         .sheet(isPresented: $showingExercisePicker) {
             ExercisePickerView { name, group, templateId, initialSets in
                 vm.addExercise(name: name, muscleGroup: group, templateId: templateId, initialSets: initialSets)
@@ -92,6 +112,9 @@ struct ActiveWorkoutView: View {
             WorkoutSummaryView(vm: vm) {
                 appState.showingActiveWorkout = false
             }
+        }
+        .sheet(isPresented: $showingNotes) {
+            WorkoutNotesSheet(workout: vm.workout)
         }
         .alert("Discard workout?", isPresented: $showingDiscardAlert) {
             Button("Discard", role: .destructive) {
@@ -117,8 +140,7 @@ struct ActiveWorkoutView: View {
             Spacer()
             if !vm.newPRs.isEmpty {
                 HStack(spacing: 4) {
-                    Image(systemName: "trophy.fill")
-                        .foregroundStyle(Color.ffGold)
+                    Image(systemName: "trophy.fill").foregroundStyle(Color.ffGold)
                     Text("\(vm.newPRs.count) PR")
                         .font(.system(size: 13, weight: .bold))
                         .foregroundStyle(Color.ffGold)
@@ -157,19 +179,117 @@ struct ActiveWorkoutView: View {
     }
 }
 
+// MARK: - Rest Timer Banner
+
+private struct RestTimerBanner: View {
+    let remaining: Int
+    let total: Int
+    let onSkip: () -> Void
+
+    private var progress: Double { Double(remaining) / Double(total) }
+    private var minutes: Int { remaining / 60 }
+    private var seconds: Int { remaining % 60 }
+
+    var body: some View {
+        HStack(spacing: 14) {
+            ZStack {
+                Circle()
+                    .stroke(Color.ffBorder, lineWidth: 3)
+                Circle()
+                    .trim(from: 0, to: progress)
+                    .stroke(timerColor, style: StrokeStyle(lineWidth: 3, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(.linear(duration: 1), value: progress)
+                Text(remaining <= 0 ? "Go!" : "\(minutes > 0 ? "\(minutes):" : "")\(String(format: minutes > 0 ? "%02d" : "%d", seconds))")
+                    .font(.system(size: 11, weight: .bold, design: .monospaced))
+                    .foregroundStyle(timerColor)
+            }
+            .frame(width: 48, height: 48)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text(remaining <= 0 ? "Rest complete" : "Resting…")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(Color.ffText)
+                Text(remaining <= 0 ? "Time to crush the next set" : "Next set in \(remaining)s")
+                    .font(.system(size: 12))
+                    .foregroundStyle(Color.ffSubtext)
+            }
+
+            Spacer()
+
+            Button("Skip") { onSkip() }
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(Color.ffSubtext)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 6)
+                .background(Color.ffSurface2)
+                .clipShape(Capsule())
+        }
+        .padding(14)
+        .background(Color.ffSurface)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .shadow(color: .black.opacity(0.3), radius: 12, y: 4)
+    }
+
+    private var timerColor: Color {
+        if remaining <= 0 { return .ffGreen }
+        if Double(remaining) / Double(total) < 0.25 { return .ffRed }
+        return .ffAccent
+    }
+}
+
+// MARK: - Workout Notes Sheet
+
+private struct WorkoutNotesSheet: View {
+    @Bindable var workout: Workout
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationStack {
+            ZStack(alignment: .topLeading) {
+                Color.ffBackground.ignoresSafeArea()
+                TextEditor(text: Binding(
+                    get: { workout.notes ?? "" },
+                    set: { workout.notes = $0.isEmpty ? nil : $0 }
+                ))
+                .font(.system(size: 16))
+                .foregroundStyle(Color.ffText)
+                .scrollContentBackground(.hidden)
+                .padding(16)
+
+                if workout.notes?.isEmpty != false {
+                    Text("Add notes about this workout…")
+                        .font(.system(size: 16))
+                        .foregroundStyle(Color.ffSubtext.opacity(0.5))
+                        .padding(22)
+                        .allowsHitTesting(false)
+                }
+            }
+            .navigationTitle("Workout Notes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Done") { dismiss() }.foregroundStyle(Color.ffAccent)
+                }
+            }
+        }
+        .preferredColorScheme(.dark)
+    }
+}
+
 // MARK: - Exercise Block
+
 private struct ExerciseBlock: View {
-    let exercise: WorkoutExercise
+    @Bindable var exercise: WorkoutExercise
     @ObservedObject var vm: ActiveWorkoutViewModel
     @State private var isExpanded = true
 
-    var sets: [ExerciseSet] { (exercise.sets ?? []).sorted { $0.setNumber < $1.setNumber } }
-    var workingSets: [ExerciseSet] { sets.filter { !$0.isWarmup } }
-    var warmupSets: [ExerciseSet] { sets.filter { $0.isWarmup } }
+    var sets: [ExerciseSet] { (exercise.sets ?? []).filter { !$0.isWarmup }.sorted { $0.setNumber < $1.setNumber } }
+    var warmupSets: [ExerciseSet] { (exercise.sets ?? []).filter { $0.isWarmup }.sorted { $0.setNumber < $1.setNumber } }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Exercise header
+            // Header
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(exercise.exerciseName)
@@ -180,51 +300,37 @@ private struct ExerciseBlock: View {
                         .foregroundStyle(Color.ffSubtext)
                 }
                 Spacer()
-
-                // Last session hint
                 if let summary = vm.lastSessionSummaries[exercise.exerciseName] {
                     VStack(alignment: .trailing, spacing: 1) {
                         Text("Last: " + summary.bestSetDisplay)
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color.ffSubtext)
+                            .font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
                         Text(summary.workoutDate.relativeDisplay())
-                            .font(.system(size: 11))
-                            .foregroundStyle(Color.ffSubtext.opacity(0.7))
+                            .font(.system(size: 11)).foregroundStyle(Color.ffSubtext.opacity(0.7))
                     }
                 }
-
                 Button {
                     withAnimation(.spring(response: 0.3)) { isExpanded.toggle() }
                 } label: {
                     Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Color.ffSubtext)
-                        .padding(8)
+                        .font(.system(size: 12)).foregroundStyle(Color.ffSubtext).padding(8)
                 }
-
                 Menu {
                     Button("Add Set") { vm.addSet(to: exercise) }
                     Button("Add Warmup Set") { vm.addWarmupSet(to: exercise) }
                     Divider()
                     Button("Remove Exercise", role: .destructive) { vm.removeExercise(exercise) }
                 } label: {
-                    Image(systemName: "ellipsis")
-                        .font(.system(size: 16))
-                        .foregroundStyle(Color.ffSubtext)
-                        .padding(8)
+                    Image(systemName: "ellipsis").font(.system(size: 16)).foregroundStyle(Color.ffSubtext).padding(8)
                 }
             }
             .padding(.horizontal, 14)
             .padding(.top, 14)
             .padding(.bottom, 8)
 
-            // Suggestion banner
-            if let suggestion = vm.suggestions[exercise.exerciseName], !isExpanded == false {
+            if let suggestion = vm.suggestions[exercise.exerciseName], isExpanded {
                 Text(suggestion.rationale)
-                    .font(.system(size: 12))
-                    .foregroundStyle(Color.ffAccent)
-                    .padding(.horizontal, 14)
-                    .padding(.bottom, 8)
+                    .font(.system(size: 12)).foregroundStyle(Color.ffAccent)
+                    .padding(.horizontal, 14).padding(.bottom, 8)
             }
 
             if isExpanded {
@@ -238,15 +344,12 @@ private struct ExerciseBlock: View {
                     Text("Reps").frame(width: 60)
                     Text("").frame(width: 32)
                 }
-                .font(.system(size: 11))
-                .foregroundStyle(Color.ffSubtext)
-                .padding(.horizontal, 14)
-                .padding(.bottom, 4)
+                .font(.system(size: 11)).foregroundStyle(Color.ffSubtext)
+                .padding(.horizontal, 14).padding(.bottom, 4)
 
                 Divider().background(Color.ffBorder).padding(.horizontal, 14)
 
-                // Sets
-                ForEach(workingSets) { set in
+                ForEach(sets) { set in
                     let isPR = vm.newPRs.contains { $0.setId == set.id }
                     ExerciseSetRow(
                         set: set,
@@ -259,13 +362,11 @@ private struct ExerciseBlock: View {
                     )
                     .padding(.horizontal, 14)
                     .padding(.vertical, 4)
-
-                    if set.id != workingSets.last?.id {
+                    if set.id != sets.last?.id {
                         Divider().background(Color.ffBorder).padding(.horizontal, 14)
                     }
                 }
 
-                // Add set button
                 Button {
                     HapticFeedback.impact(.light)
                     vm.addSet(to: exercise)
