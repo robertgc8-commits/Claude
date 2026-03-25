@@ -84,8 +84,8 @@ struct ActiveWorkoutView: View {
             }
         }
         .sheet(isPresented: $showingExercisePicker) {
-            ExercisePickerView { name, group, templateId in
-                vm.addExercise(name: name, muscleGroup: group, templateId: templateId)
+            ExercisePickerView { name, group, templateId, initialSets in
+                vm.addExercise(name: name, muscleGroup: group, templateId: templateId, initialSets: initialSets)
             }
         }
         .sheet(isPresented: $showingFinishSummary) {

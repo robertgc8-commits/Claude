@@ -53,7 +53,7 @@ final class ActiveWorkoutViewModel: ObservableObject {
 
     // MARK: - Exercises
 
-    func addExercise(name: String, muscleGroup: MuscleGroup, templateId: String? = nil) {
+    func addExercise(name: String, muscleGroup: MuscleGroup, templateId: String? = nil, initialSets: [(reps: Int, weight: Double)] = []) {
         let exercise = WorkoutExercise(
             workoutId: workout.id,
             exerciseName: name,
@@ -63,7 +63,19 @@ final class ActiveWorkoutViewModel: ObservableObject {
         )
         context.insert(exercise)
         exercises.append(exercise)
-        addDefaultSet(to: exercise)
+        if initialSets.isEmpty {
+            addDefaultSet(to: exercise)
+        } else {
+            for (i, entry) in initialSets.enumerated() {
+                let set = ExerciseSet(
+                    workoutExerciseId: exercise.id,
+                    setNumber: i + 1,
+                    reps: entry.reps,
+                    weight: entry.weight
+                )
+                context.insert(set)
+            }
+        }
         loadSuggestion(for: exercise)
     }
 
