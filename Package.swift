@@ -16,7 +16,8 @@ import PackageDescription
 let package = Package(
     name: "ForgeFit",
     platforms: [
-        .iOS(.v17)
+        .iOS(.v17),
+        .macOS(.v14)
     ],
     products: [
         .library(name: "ForgeFit", targets: ["ForgeFit"])
