@@ -1,0 +1,270 @@
+// Personal body-composition / medication / strength tracker
+// SQLite for local dev. Swap `provider`/`url` in datasource to "postgresql"
+// and an env DATABASE_URL to migrate later -- no model changes required.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Body composition
+// ---------------------------------------------------------------------------
+
+model BodyMeasurement {
+  id                     String   @id @default(cuid())
+  date                   DateTime
+  weight                 Float
+  bmi                    Float?
+  bodyFatPercent         Float?
+  visceralFat            Float?
+  subcutaneousFatPercent Float?
+  skeletalMusclePercent  Float?
+  muscleMass             Float?
+  fatFreeBodyWeight      Float?
+  bodyWaterPercent       Float?
+  proteinPercent         Float?
+  boneMass               Float?
+  bmr                    Float?
+  metabolicAge           Int?
+  waist                  Float?
+  notes                  String?
+  source                 String   @default("manual") // "manual" | "weekly_checkin"
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  weeklyCheckIn WeeklyCheckIn?
+
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Medication (Zepbound)
+// ---------------------------------------------------------------------------
+
+model MedicationDose {
+  id            String   @id @default(cuid())
+  date          DateTime
+  doseMg        Float
+  sideEffects   String?
+  appetiteLevel Int?
+  hungerLevel   Int?
+  energyLevel   Int?
+  nauseaLevel   Int?
+  giSymptoms    String?
+  missed        Boolean  @default(false)
+  delayed       Boolean  @default(false)
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  weeklyCheckIn WeeklyCheckIn?
+
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Exercise library
+// ---------------------------------------------------------------------------
+
+model Exercise {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  primaryMuscle     String
+  secondaryMuscles  String // JSON string array
+  pattern           String // MovementPattern
+  laterality        String // "unilateral" | "bilateral"
+  exerciseType      String // "compound" | "isolation"
+  muscleSetCredits  String // JSON map { muscleGroup: fractionalCredit }
+  createdAt         DateTime @default(now())
+
+  sets WorkoutSet[]
+}
+
+// ---------------------------------------------------------------------------
+// Workouts
+// ---------------------------------------------------------------------------
+
+model Workout {
+  id         String   @id @default(cuid())
+  date       DateTime
+  type       String // WorkoutType
+  bodyweight Float?
+  notes      String?
+  createdAt  DateTime @default(now())
+
+  sets WorkoutSet[]
+
+  @@index([date])
+}
+
+model WorkoutSet {
+  id          String  @id @default(cuid())
+  workoutId   String
+  exerciseId  String
+  setNumber   Int
+  weight      Float
+  reps        Int
+  rpe         Float?
+  rir         Float?
+  tempo       String?
+  restSeconds Int?
+
+  workout  Workout  @relation(fields: [workoutId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@index([workoutId])
+  @@index([exerciseId])
+}
+
+// ---------------------------------------------------------------------------
+// Nutrition
+// ---------------------------------------------------------------------------
+
+model NutritionLog {
+  id        String   @id @default(cuid())
+  date      DateTime
+  calories  Int?
+  proteinG  Float?
+  carbsG    Float?
+  fatG      Float?
+  waterOz   Float?
+  fiberG    Float?
+  notes     String?
+  createdAt DateTime @default(now())
+
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Recovery
+// ---------------------------------------------------------------------------
+
+model RecoveryLog {
+  id                String   @id @default(cuid())
+  date              DateTime
+  sleepHours        Float?
+  recoveryRating    Int?
+  energyRating      Int?
+  sorenessRating    Int?
+  stressRating      Int?
+  notes             String?
+  createdAt         DateTime @default(now())
+
+  @@index([date])
+}
+
+// ---------------------------------------------------------------------------
+// Goals
+// ---------------------------------------------------------------------------
+
+model Goal {
+  id          String    @id @default(cuid())
+  label       String
+  type        String // "weight" | "body_fat" | "lean_mass" | "custom"
+  targetValue Float
+  targetDate  DateTime?
+  startValue  Float?
+  startDate   DateTime?
+  achieved    Boolean   @default(false)
+  notes       String?
+  createdAt   DateTime  @default(now())
+}
+
+// ---------------------------------------------------------------------------
+// Weekly weigh-in scheduling
+// ---------------------------------------------------------------------------
+
+model WeighInSchedule {
+  id                String  @id @default(cuid())
+  dayOfWeek         Int     @default(3) // 0=Sun ... 3=Wed
+  preferredTimeNote String  @default("Morning, after waking, after bathroom, before food/water")
+  frequency         String  @default("weekly")
+  reminderType      String  @default("in_app") // structured so email/sms/push can be added later
+  active            Boolean @default(true)
+}
+
+model WeeklyCheckIn {
+  id                          String   @id @default(cuid())
+  date                        DateTime
+  weekStartDate               DateTime
+  bodyMeasurementId           String?  @unique
+  medicationDoseId            String?  @unique
+  waist                       Float?
+  photosNote                  String?
+  hungerRating                Int?
+  energyRating                Int?
+  trainingConsistencyRating   Int?
+  proteinConsistencyRating    Int?
+  sideEffects                 String?
+  notes                       String?
+  completed                   Boolean  @default(true)
+  createdAt                   DateTime @default(now())
+
+  bodyMeasurement BodyMeasurement? @relation(fields: [bodyMeasurementId], references: [id])
+  medicationDose  MedicationDose?  @relation(fields: [medicationDoseId], references: [id])
+
+  @@index([weekStartDate])
+}
+
+// ---------------------------------------------------------------------------
+// Generated reports & insights
+// ---------------------------------------------------------------------------
+
+model WeeklyProgressReport {
+  id             String   @id @default(cuid())
+  weekStartDate  DateTime @unique
+  weekEndDate    DateTime
+  generatedAt    DateTime @default(now())
+  overallRating  String
+  summaryJson    String
+
+  insights        Insight[]
+  recommendations Recommendation[]
+}
+
+model MonthlyProgressReport {
+  id              String   @id @default(cuid())
+  monthStartDate  DateTime @unique
+  monthEndDate    DateTime
+  generatedAt     DateTime @default(now())
+  summaryJson     String
+
+  insights        Insight[]
+  recommendations Recommendation[]
+}
+
+model Insight {
+  id              String   @id @default(cuid())
+  date            DateTime @default(now())
+  category        String
+  severity        String // "info" | "warning" | "risk"
+  metric          String
+  explanation     String
+  suggestedAction String?
+  resolved        Boolean  @default(false)
+
+  weeklyReportId  String?
+  monthlyReportId String?
+
+  weeklyReport  WeeklyProgressReport?  @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+  monthlyReport MonthlyProgressReport? @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
+}
+
+model Recommendation {
+  id       String   @id @default(cuid())
+  date     DateTime @default(now())
+  category String
+  message  String
+  priority String  @default("medium") // "low" | "medium" | "high"
+  resolved Boolean @default(false)
+
+  weeklyReportId  String?
+  monthlyReportId String?
+
+  weeklyReport  WeeklyProgressReport?  @relation(fields: [weeklyReportId], references: [id], onDelete: Cascade)
+  monthlyReport MonthlyProgressReport? @relation(fields: [monthlyReportId], references: [id], onDelete: Cascade)
+}
